@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>محاكاة التخزين المؤقت: Redis vs Memcached</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-emerald-400 text-center">مقارنة التخزين المؤقت (Caching)</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="border border-slate-700 p-6 rounded-xl bg-slate-900">
+                <h2 class="text-xl font-bold mb-4 text-sky-400">Memcached</h2>
+                <ul class="text-sm space-y-2 mb-4 text-slate-300">
+                    <li>✓ بسيط جداً</li>
+                    <li>✓ متعدد الخيوط (Multi-threaded)</li>
+                    <li>✓ بيانات بسيطة فقط (Key-Value)</li>
+                </ul>
+                <button onclick="simulate('memcached')" class="w-full bg-sky-600 p-2 rounded">محاكاة تخزين</button>
+            </div>
+
+            <div class="border border-slate-700 p-6 rounded-xl bg-slate-900">
+                <h2 class="text-xl font-bold mb-4 text-red-400">Redis</h2>
+                <ul class="text-sm space-y-2 mb-4 text-slate-300">
+                    <li>✓ يدعم هياكل بيانات معقدة</li>
+                    <li>✓ يدعم حفظ البيانات (Persistence)</li>
+                    <li>✓ خيط واحد (Single-threaded)</li>
+                </ul>
+                <button onclick="simulate('redis')" class="w-full bg-red-600 p-2 rounded">محاكاة تخزين</button>
+            </div>
+        </div>
+
+        <div id="output" class="mt-8 p-4 bg-slate-900 border border-slate-800 rounded min-h-[100px] font-mono text-xs"></div>
+    </div>
+
+    <script>
+        function simulate(type) {
+            const output = document.getElementById('output');
+            const time = new Date().toLocaleTimeString();
+            let msg = type === 'memcached' 
+                ? "Memcached: تم تخزين البيانات في الذاكرة (سريع، بسيط، لا يمكن استرجاع البيانات بعد الإغلاق)"
+                : "Redis: تم تخزين البيانات (دعم هياكل معقدة، إمكانية الحفظ على القرص، استقرار عالي)";
+            
+            output.innerHTML += `<div class="mb-1 text-slate-300">[${time}] ${msg}</div>`;
+        }
+    </script>
+</body>
+</html>
