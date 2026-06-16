@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة الأنظمة الموزعة: Data Sharding vs Replication</title>
+    <!-- تضمين مكتبة Tailwind CSS للتصميم العصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تضمين مكتبة FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .glow-emerald {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+        .glow-blue {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- رأس الصفحة والمعلومات الدراسية -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-400">
+                    لوحة محاكاة النظم الموزعة والمترابطة
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">تطبيق تفاعلي للمقارنة بين تكرار البيانات المتطابقة (Data Replication) والتقسيم الأفقي للبيانات (Data Sharding)</p>
+            </div>
+            
+            <!-- معلومات الطالبة ثابتة لمنع الأخطاء البرمجية -->
+            <div class="flex flex-wrap gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400 px-2">اسم الطالبة:</div>
+                <input type="text" id="studentName" value="رغد الغزاوي" readonly class="bg-slate-900 border border-slate-750 rounded px-3 py-1.5 text-xs text-emerald-400 font-bold w-48 text-center focus:outline-none">
+            </div>
+        </div>
+    </header>
+
+    <!-- محتوى لوحة التحكم الرئيسي -->
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- لوحة التحكم بالعمليات وإرسال البيانات -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-md font-bold mb-4 text-emerald-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fas fa-database"></i> إدارة التخزين الموزع
+                </h2>
+                
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-3xs text-slate-400">اسم المستخدم لحفظه:</label>
+                        <input type="text" id="dbUsernameInput" value="أحمد" placeholder="اكتبي اسماً هنا..." class="bg-slate-950 border border-slate-850 rounded p-2 text-xs font-bold text-center text-emerald-300 focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <button onclick="writeRecord()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-slate-950 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer">
+                        <i class="fas fa-plus-circle"></i>
+                        حفظ العميل برمجياً
+                    </button>
+
+                    <button onclick="triggerNodeCrash()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-95 transition-all text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 cursor-pointer">
+                        <i class="fas fa-power-off"></i>
+                        محاكاة سقوط العقدة الأساسية
+                    </button>
+
+                    <button onclick="resetSimulation()" class="w-full bg-slate-950 hover:bg-slate-900 text-slate-400 text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-800 cursor-pointer mt-1">
+                        <i class="fas fa-rotate-right"></i>
+                        إعادة ضبط كلي للنظام
+                    </button>
+                </div>
+            </div>
+
+            <!-- شرح سريع للمفهوم يقرأه الأستاذ على الواجهة -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow hidden lg:block">
+                <h3 class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-800 pb-2">كيف تقارنين الفكرة؟</h3>
+                <div class="text-[11px] text-slate-400 space-y-3 leading-relaxed">
+                    <p>
+                        💡 <strong class="text-emerald-400">Data Replication (التكرار):</strong> يتم حفظ نفس السجل بالكامل في جميع قواعد البيانات المتوفرة.
+                        <br><span class="text-emerald-300 font-bold">الميزة:</span> لو سقطت عقدة، تظل البيانات آمنة تماماً ومتاحة للقراءة من العقد الأخرى.
+                    </p>
+                    <p>
+                        💡 <strong class="text-blue-400">Data Sharding (التقسيم):</strong> يتم تقسيم البيانات وتوزيعها ذكياً بناءً على الحرف الأول للعميل لتخفيف الضغط وحجم المساحة.
+                        <br><span class="text-blue-300 font-bold">الخوارزمية المستخدمة هنا:</span>
+                        $$f(\text{Name}) \implies \begin{cases} \text{Shard A} & \text{إذا بدأ بحرف أ - خ} \\ \text{Shard B} & \text{إذا بدأ بحرف د - ي} \end{cases}$$
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ساحة عرض المحاكاة الهيكلية للنظامين -->
+        <section class="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- النمط الأول: Data Replication (نسخ البيانات المتطابقة) -->
+            <div id="replicationCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-emerald">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-emerald-950 text-emerald-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-emerald-800/40">High Availability</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">نموذج تكرار البيانات (Replication)</h3>
+                        </div>
+                        <div id="repStatusBadge" class="text-2xs text-emerald-400 bg-emerald-950/50 border border-emerald-800/30 px-2 py-1 rounded">
+                            متصل ومستقر
+                        </div>
+                    </div>
+
+                    <!-- تمثيل خوادم النسخ المتطابقة -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-around relative">
+                        
+                        <!-- العقدة أ (الأساسية) -->
+                        <div id="repNodeA" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">العقدة الأساسية (Node A)</h4>
+                                    <div id="repNodeA_List" class="text-[10px] text-slate-400 font-mono mt-1">السجلات: [ رغد ]</div>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-emerald-400 font-bold bg-emerald-950/40 px-1 py-0.5 rounded border border-emerald-900">رئيسية (Master)</span>
+                        </div>
+
+                        <!-- العقدة ب (النسخة الثانية) -->
+                        <div id="repNodeB" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">العقدة المساعدة الأولى (Node B)</h4>
+                                    <div id="repNodeB_List" class="text-[10px] text-slate-400 font-mono mt-1">السجلات: [ رغد ]</div>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-slate-500">منسوخة (Replica)</span>
+                        </div>
+
+                        <!-- العقدة ج (النسخة الثالثة) -->
+                        <div id="repNodeC" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">العقدة المساعدة الثانية (Node C)</h4>
+                                    <div id="repNodeC_List" class="text-[10px] text-slate-400 font-mono mt-1">السجلات: [ رغد ]</div>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-slate-500">منسوخة (Replica)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    تكرار متطابق للبيانات بالكامل لحماية النظام من أي فقدان عند سقوط الخوادم
+                </div>
+            </div>
+
+            <!-- النمط الثاني: Data Sharding (التقسيم الأفقي الذكي) -->
+            <div id="shardingCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-blue">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-blue-950 text-blue-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-blue-800/40">Horizontal Partitioning</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">نموذج تقسيم البيانات (Sharding)</h3>
+                        </div>
+                        <div class="text-2xs text-blue-400 bg-blue-950/50 border border-blue-800/30 px-2 py-1 rounded">
+                            تقسيم ذكي حسب نطاق الحروف
+                        </div>
+                    </div>
+
+                    <!-- تمثيل خوادم التقسيم الأفقي -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-around">
+                        
+                        <!-- Shard A (أ - خ) -->
+                        <div id="shardA" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400 text-xs">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">خادم التقسيم الأول (Shard A)</h4>
+                                    <p class="text-[9px] text-blue-400 font-bold">مخصص لنطاق الحروف: [ أ - خ ]</p>
+                                    <div id="shardA_List" class="text-[10px] text-slate-400 font-mono mt-1">السجلات: [ أحمد ]</div>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-blue-400 font-bold bg-blue-950/40 px-1 py-0.5 rounded border border-blue-900">نطاق أ-خ</span>
+                        </div>
+
+                        <!-- Shard B (د - ي) -->
+                        <div id="shardB" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400 text-xs">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">خادم التقسيم الثاني (Shard B)</h4>
+                                    <p class="text-[9px] text-blue-400 font-bold">مخصص لنطاق الحروف: [ د - ي ]</p>
+                                    <div id="shardB_List" class="text-[10px] text-slate-400 font-mono mt-1">السجلات: [ رغد ]</div>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-blue-400 font-bold bg-blue-950/40 px-1 py-0.5 rounded border border-blue-900">نطاق د-ي</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    توزيع السجلات ذكياً لتوفير المساحة وتجنب تضخم قاعدة البيانات الواحدة
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- شاشة إخراج تظهر تفاصيل العمليات (Terminal Console Log) -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <i class="fas fa-terminal"></i> سجل حركة تخزين وفهرسة البيانات الموزعة (Storage Partition Tracer)
+                </span>
+                <button onclick="clearConsole()" class="text-3xs text-slate-400 hover:text-slate-100 transition-all bg-slate-950 px-2 py-1 rounded border border-slate-800 cursor-pointer">
+                    مسح السجل
+                </button>
+            </div>
+            <!-- صندوق السجلات -->
+            <div id="terminal" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-28 overflow-y-auto text-3xs font-mono text-emerald-400 space-y-1">
+                <div>[SYSTEM] جاهز للاختبار. جربي كتابة اسم مستخدم والضغط على "حفظ العميل برمجياً" لمراقبة تكنولوجيا الفرز!</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- الجزء البرمجي للتحكم بالمحاكاة للأستاذ -->
+    <script>
+        // قواعد البيانات التخيلية
+        const replicationDB = ["رغد"];
+        const shardA_DB = ["أحمد"];
+        const shardB_DB = ["رغد"];
+
+        let isNodeACrashed = false;
+
+        function logMessage(system, type, text) {
+            const terminal = document.getElementById('terminal');
+            if (!terminal) return;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            let colorClass = "text-emerald-400";
+            if (type === 'rep') colorClass = "text-emerald-400 font-semibold";
+            if (type === 'shard') colorClass = "text-blue-400 font-semibold";
+            if (type === 'error') colorClass = "text-rose-500 font-bold animate-pulse";
+            if (type === 'system') colorClass = "text-amber-400";
+
+            const logElement = document.createElement('div');
+            logElement.className = `${colorClass} py-0.5`;
+            logElement.innerHTML = `[${time}] [${system}] ${text}`;
+            
+            terminal.appendChild(logElement);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('terminal').innerHTML = `<div>[SYSTEM] تم تصفير سجل مراقبة التخزين...</div>`;
+        }
+
+        // كتابة وحفظ عميل جديد
+        function writeRecord() {
+            const inputName = document.getElementById('dbUsernameInput').value.trim();
+            if (!inputName) {
+                logMessage('SYSTEM', 'error', 'خطأ: الرجاء كتابة اسم مستخدم صحيح أولاً!');
+                return;
+            }
+
+            logMessage('CLIENT', 'system', `بدء طلب كتابة العميل الجديد: "${inputName}" في كِلا الهيكلين...`);
+
+            // 1. محاكاة التكرار (Data Replication)
+            if (isNodeACrashed) {
+                logMessage('REPLICATION_GATEWAY', 'error', 'تنبيه: العقدة الأساسية Node A معطلة! يتم التحويل التلقائي (Failover) للكتابة عبر Node B...');
+                triggerNodeGlow('repNodeB', 'bg-emerald-950');
+                triggerNodeGlow('repNodeC', 'bg-emerald-950');
+            } else {
+                logMessage('REPLICATION_GATEWAY', 'rep', 'تم كتابة البيانات على العقدة الأساسية Node A بنجاح. جاري المزامنة مع العقد المساعدة...');
+                triggerNodeGlow('repNodeA', 'bg-emerald-950');
+                triggerNodeGlow('repNodeB', 'bg-emerald-950');
+                triggerNodeGlow('repNodeC', 'bg-emerald-950');
+            }
+
+            replicationDB.push(inputName);
+            updateReplicationUI();
+            logMessage('REPLICATION_CLUSTER', 'rep', `اكتمل نسخ وتكرار العميل "${inputName}" بنجاح عبر كافة الخوادم الموزعة لضمان الأمان!`);
+
+
+            // 2. محاكاة التقسيم (Data Sharding)
+            // تحديد الحرف الأول
+            const firstChar = inputName.charAt(0);
+            
+            // نطاق الحروف أ - خ
+            const rangeA = /^[أبتثجحخ]/;
+
+            logMessage('SHARDING_ROUTER', 'shard', `جاري حساب خوارزمية التوجيه: Hash/Range Router للفهرسة بالاعتماد على الحرف الأول "${firstChar}"...`);
+
+            if (rangeA.test(firstChar)) {
+                // تذهب لـ Shard A
+                shardA_DB.push(inputName);
+                triggerNodeGlow('shardA', 'bg-blue-950');
+                updateShardingUI();
+                logMessage('SHARDING_CLUSTER', 'shard', `تم توجيه وحفظ العميل "${inputName}" في [Shard A] فقط بنجاح لتوفير مساحة [Shard B]!`);
+            } else {
+                // تذهب لـ Shard B
+                shardB_DB.push(inputName);
+                triggerNodeGlow('shardB', 'bg-blue-950');
+                updateShardingUI();
+                logMessage('SHARDING_CLUSTER', 'shard', `تم توجيه وحفظ العميل "${inputName}" في [Shard B] فقط بنجاح لتوفير مساحة [Shard A]!`);
+            }
+        }
+
+        // تحديث واجهات التكرار
+        function updateReplicationUI() {
+            const listStr = `السجلات: [ ${replicationDB.join(' , ')} ]`;
+            document.getElementById('repNodeA_List').innerText = isNodeACrashed ? "العقدة خارج الخدمة ❌" : listStr;
+            document.getElementById('repNodeB_List').innerText = listStr;
+            document.getElementById('repNodeC_List').innerText = listStr;
+        }
+
+        // تحديث واجهات التقسيم
+        function updateShardingUI() {
+            document.getElementById('shardA_List').innerText = `السجلات: [ ${shardA_DB.join(' , ')} ]`;
+            document.getElementById('shardB_List').innerText = `السجلات: [ ${shardB_DB.join(' , ')} ]`;
+        }
+
+        // محاكاة تعطل عقدة
+        function triggerNodeCrash() {
+            isNodeACrashed = !isNodeACrashed;
+            const nodeA = document.getElementById('repNodeA');
+            const badge = document.getElementById('repStatusBadge');
+            const card = document.getElementById('replicationCard');
+
+            if (isNodeACrashed) {
+                nodeA.classList.remove('border-slate-800', 'bg-slate-900');
+                nodeA.classList.add('border-rose-800', 'bg-rose-950/20');
+                badge.innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span> سقوط Node A`;
+                badge.className = "text-2xs text-rose-400 bg-rose-950/50 border border-rose-800/30 px-2 py-1 rounded";
+                if (card) {
+                    card.classList.remove('glow-emerald');
+                    card.classList.add('glow-red');
+                }
+                
+                logMessage('REPLICATION_GATEWAY', 'error', 'عطل أمني فادح: انهيار وسقوط العقدة الأساسية Node A تماماً عن العمل!');
+                logMessage('REPLICATION_CLUSTER', 'system', 'تنبيه: ميزة High Availability تبدأ بالعمل! النظام لا زال حياً والبيانات آمنة ومتاحة بالكامل على Node B و Node C.');
+                
+                document.getElementById('repNodeA_List').innerText = "العقدة خارج الخدمة ❌";
+            } else {
+                nodeA.classList.remove('border-rose-800', 'bg-rose-950/20');
+                nodeA.classList.add('border-slate-800', 'bg-slate-900');
+                badge.innerHTML = `متصل ومستقر`;
+                badge.className = "text-2xs text-emerald-400 bg-emerald-950/50 border border-emerald-800/30 px-2 py-1 rounded";
+                if (card) {
+                    card.classList.remove('glow-red');
+                    card.classList.add('glow-emerald');
+                }
+                
+                logMessage('REPLICATION_GATEWAY', 'system', 'تم استعادة اتصال العقدة Node A وإصلاح الخلل وإعادة مزامنة البيانات المتراكمة عليها بنجاح.');
+                updateReplicationUI();
+            }
+        }
+
+        // وميض مرئي للتنبيه
+        function triggerNodeGlow(id, bgClass) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const originalBg = el.classList.contains('bg-slate-900') ? 'bg-slate-900' : 'bg-slate-950';
+
+            el.classList.remove(originalBg);
+            el.classList.add(bgClass, 'scale-[1.02]');
+            
+            setTimeout(() => {
+                el.classList.remove(bgClass, 'scale-[1.02]');
+                el.classList.add(originalBg);
+            }, 600);
+        }
+
+        // تصفير المحاكاة
+        function resetSimulation() {
+            replicationDB.length = 0;
+            replicationDB.push("رغد");
+            
+            shardA_DB.length = 0;
+            shardA_DB.push("أحمد");
+            
+            shardB_DB.length = 0;
+            shardB_DB.push("رغد");
+
+            isNodeACrashed = false;
+
+            const nodeA = document.getElementById('repNodeA');
+            const badge = document.getElementById('repStatusBadge');
+            const card = document.getElementById('replicationCard');
+
+            if (nodeA) {
+                nodeA.classList.remove('border-rose-800', 'bg-rose-950/20');
+                nodeA.classList.add('border-slate-800', 'bg-slate-900');
+            }
+            if (badge) {
+                badge.innerHTML = `متصل ومستقر`;
+                badge.className = "text-2xs text-emerald-400 bg-emerald-950/50 border border-emerald-800/30 px-2 py-1 rounded";
+            }
+            if (card) {
+                card.classList.remove('glow-red');
+                card.classList.add('glow-emerald');
+            }
+
+            updateReplicationUI();
+            updateShardingUI();
+            
+            logMessage('SYSTEM', 'system', 'تم إعادة تصفير السجلات وإعادة قواعد البيانات الموزعة لحالتها الابتدائية المستقرة.');
+        }
+    </script>
+</body>
+</html>
