@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة NATS vs MQTT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+    <header class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-teal-400">مقارنة بروتوكولات المراسلة (NATS vs MQTT)</h1>
+        <p class="text-slate-400 mt-2">محاكاة إرسال الرسائل في أنظمة إنترنت الأشياء (IoT)</p>
+    </header>
+
+    <main class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- MQTT Section -->
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-purple-400">MQTT</h2>
+            <p class="text-sm mb-4 text-slate-300">مثالي للأجهزة المحدودة الموارد. يعتمد على الوسيط (Broker) بشكل أساسي.</p>
+            <button onclick="sendMsg('MQTT')" class="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded-lg transition">إرسال رسالة عبر MQTT</button>
+        </div>
+
+        <!-- NATS Section -->
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-orange-400">NATS</h2>
+            <p class="text-sm mb-4 text-slate-300">خفيف جداً، سريع كالصاعقة، ومصمم للنظم الموزعة عالية الأداء.</p>
+            <button onclick="sendMsg('NATS')" class="w-full bg-orange-600 hover:bg-orange-500 py-2 rounded-lg transition">إرسال رسالة عبر NATS</button>
+        </div>
+    </main>
+
+    <div class="max-w-4xl mx-auto mt-8 bg-slate-950 border border-slate-800 p-4 rounded-xl h-48 overflow-y-auto font-mono text-xs text-green-400" id="console">
+        <div>[النظام] جاهز لاستقبال الأوامر...</div>
+    </div>
+
+    <script>
+        function sendMsg(protocol) {
+            const consoleBox = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            const log = document.createElement('div');
+            
+            if(protocol === 'MQTT') {
+                log.innerHTML = `[${time}] <span class="text-purple-400">MQTT:</span> تم إرسال الرسالة بنمط Publish/Subscribe عبر الوسيط.`;
+            } else {
+                log.innerHTML = `[${time}] <span class="text-orange-400">NATS:</span> تم إرسال الرسالة بسرعة فائقة عبر شبكة اتصالات NATS.`;
+            }
+            consoleBox.appendChild(log);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
