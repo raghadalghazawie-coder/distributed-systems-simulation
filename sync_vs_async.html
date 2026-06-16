@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة الأنظمة الموزعة: Synchronous vs Asynchronous</title>
+    <!-- تضمين مكتبة Tailwind CSS للتصميم العصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تضمين مكتبة FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+        .glow-pink {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 2s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- رأس الصفحة والمعلومات الدراسية -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-400 to-pink-400">
+                    لوحة محاكاة النظم الموزعة والمترابطة
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">تطبيق تفاعلي للمقارنة بين الاتصال المتزامن المباشر (REST API) والاتصال غير المتزامن المعتمد على الطوابير</p>
+            </div>
+            
+            <!-- معلومات الطالبة ثابتة لمنع الأخطاء البرمجية -->
+            <div class="flex flex-wrap gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400 px-2">اسم الطالبة:</div>
+                <input type="text" id="studentName" value="رغد الغزاوي" readonly class="bg-slate-900 border border-slate-750 rounded px-3 py-1.5 text-xs text-cyan-400 font-bold w-48 text-center focus:outline-none">
+            </div>
+        </div>
+    </header>
+
+    <!-- محتوى لوحة التحكم الرئيسي -->
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- لوحة التحكم بالعمليات وإرسال الرسائل -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-md font-bold mb-4 text-cyan-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fas fa-network-wired"></i> محاكاة التدفق
+                </h2>
+                
+                <div class="flex flex-col gap-3">
+                    <button id="btnSync" onclick="sendSyncRequest()" class="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-95 transition-all text-slate-950 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20 cursor-pointer">
+                        <i class="fas fa-arrows-spin"></i>
+                        طلب متزامن (REST HTTP)
+                    </button>
+
+                    <button id="btnAsync" onclick="sendAsyncRequest()" class="w-full bg-pink-600 hover:bg-pink-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-pink-900/20 cursor-pointer">
+                        <i class="fas fa-envelopes-bulk"></i>
+                        طلب غير متزامن (Queue)
+                    </button>
+
+                    <div class="border-t border-slate-800 my-2"></div>
+
+                    <button id="btnDelay" onclick="toggleServerDelay()" class="w-full bg-slate-850 hover:bg-slate-800 active:scale-95 transition-all text-rose-400 font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-700 cursor-pointer">
+                        <i class="fas fa-clock"></i>
+                        <span id="delayBtnText">حقن تأخير بالسيرفر (خامل)</span>
+                    </button>
+
+                    <button onclick="resetSimulation()" class="w-full bg-slate-950 hover:bg-slate-900 text-slate-400 text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-800 cursor-pointer mt-1">
+                        <i class="fas fa-rotate-left"></i>
+                        إعادة ضبط النظام
+                    </button>
+                </div>
+            </div>
+
+            <!-- شرح سريع للمفهوم -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow hidden lg:block">
+                <h3 class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-800 pb-2">سلوك الأنظمة الموزعة:</h3>
+                <div class="text-[11px] text-slate-400 space-y-3 leading-relaxed">
+                    <p>
+                        💡 <strong class="text-cyan-400">REST (متزامن - Blocking):</strong> تضطر واجهة المستخدم للانتظار والتعطل الكامل حتى ينتهي السيرفر البعيد من المعالجة ويرسل الاستجابة. إذا كان السيرفر بطيئاً، يتجمد التطبيق تماماً!
+                    </p>
+                    <p>
+                        💡 <strong class="text-pink-400">MQ (غير متزامن - Non-blocking):</strong> يتم إرسال الطلب فوراً للطابور ويتلقى العميل استجابة سريعة جداً. يستمر المستخدم بالعمل بينما يتم معالجة العملية ببطء في الخلفية دون قفل الواجهة.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ساحة عرض المحاكاة الهيكلية للنظامين -->
+        <section class="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- النمط الأول: Synchronous REST (الطلب المتزامن المباشر) -->
+            <div id="syncCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-cyan">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-cyan-950 text-cyan-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-cyan-800/40">Blocking Execution</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">معمارية REST المتزامنة</h3>
+                        </div>
+                        <div id="syncStatusBadge" class="text-2xs text-cyan-400 bg-cyan-950/50 border border-cyan-800/30 px-2 py-1 rounded">
+                            خامل وجاهز
+                        </div>
+                    </div>
+
+                    <!-- تمثيل المعالجة المتزامنة -->
+                    <div id="syncContainer" class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-between relative overflow-hidden">
+                        
+                        <!-- جهة العميل (Client UI) -->
+                        <div id="syncClientNode" class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 text-xs">
+                                    <i class="fas fa-desktop"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-xs">متصفح العميل (رغد الغزاوي)</h4>
+                                    <p id="syncClientState" class="text-[9px] text-slate-500">جاهز، لم يتم إرسال طلبات بعد.</p>
+                                </div>
+                            </div>
+                            <span id="syncClientIndicator" class="text-3xs text-slate-500">مستقر</span>
+                        </div>
+
+                        <!-- قناة الاتصال المباشرة (HTTP Channel) -->
+                        <div class="flex flex-col items-center justify-center py-4 my-2 border-t border-b border-slate-900 relative">
+                            <div id="syncPayloadLine" class="w-full h-1 bg-slate-800 relative rounded">
+                                <div id="syncDot" class="absolute w-2.5 h-2.5 rounded-full bg-cyan-400 -top-[3px] left-0 opacity-0 transition-all duration-[3000ms] linear"></div>
+                            </div>
+                            <span class="text-[9px] text-slate-500 mt-1">قناة اتصال متزامنة ومباشرة (HTTP Link)</span>
+                        </div>
+
+                        <!-- خادم معالجة الطلبات (Server API) -->
+                        <div id="syncServerNode" class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-xs">خادم المعالجة الأساسي (API Server)</h4>
+                                    <p id="syncServerState" class="text-[9px] text-slate-500">في وضع الاستعداد...</p>
+                                </div>
+                            </div>
+                            <span id="syncServerIndicator" class="text-2xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded">خامل</span>
+                        </div>
+
+                        <!-- حاجز تجميد الواجهة عند الطلب المتزامن (Blocking Overlay) -->
+                        <div id="syncBlockingOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px] flex flex-col items-center justify-center text-center opacity-0 pointer-events-none transition-all duration-300 z-10">
+                            <div class="w-12 h-12 rounded-full border-4 border-slate-800 border-t-cyan-500 animate-spin mb-3"></div>
+                            <h4 class="text-xs font-bold text-cyan-200">الواجهة متجمدة! (UI Thread Blocked)</h4>
+                            <p class="text-[10px] text-slate-400 mt-1 max-w-[200px]">المتصفح معلق بالكامل وينتظر الرد من السيرفر. لا يمكنك الضغط على أي أزرار الآن...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    اتصال أحادي المسار، يقفل الواجهة مؤقتاً لحين انتهاء المعالجة
+                </div>
+            </div>
+
+            <!-- النمط الثاني: Asynchronous Queue (الاتصال غير المتزامن) -->
+            <div id="asyncCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-pink">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-pink-950 text-pink-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-pink-800/40">Non-Blocking Queue</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">معمارية الطوابير غير المتزامنة</h3>
+                        </div>
+                        <div id="asyncStatusBadge" class="text-2xs text-pink-400 bg-pink-950/50 border border-pink-800/30 px-2 py-1 rounded">
+                            خامل وجاهز
+                        </div>
+                    </div>
+
+                    <!-- تمثيل المعالجة غير المتزامنة -->
+                    <div id="asyncContainer" class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-between relative">
+                        
+                        <!-- جهة العميل (Client UI - يستجيب فوراً) -->
+                        <div id="asyncClientNode" class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-pink-950 border border-pink-800 flex items-center justify-center text-pink-400 text-xs">
+                                    <i class="fas fa-desktop"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-xs">متصفح العميل (رغد الغزاوي)</h4>
+                                    <p id="asyncClientState" class="text-[9px] text-slate-500">جاهز، ويستقبل طلبات فورية دوماً.</p>
+                                </div>
+                            </div>
+                            <span id="asyncClientIndicator" class="text-3xs text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-900">حر تماماً</span>
+                        </div>
+
+                        <!-- وسيط الرسائل وطابور العمليات (Message Queue) -->
+                        <div class="my-3 p-3 border border-pink-900/30 bg-slate-900/40 rounded-xl flex items-center justify-between gap-2">
+                            <div class="flex-grow">
+                                <span class="text-[10px] font-bold text-pink-300 block mb-1">طابور المهام المعلقة (Message Queue)</span>
+                                <div id="asyncQueueContainer" class="flex gap-2 p-1 min-h-[32px] items-center bg-slate-950 rounded border border-slate-800 overflow-x-auto">
+                                    <span id="asyncEmptyState" class="text-[9px] text-slate-600 px-2">الطابور فارغ...</span>
+                                </div>
+                            </div>
+                            <span id="asyncQueueCount" class="text-2xs font-mono font-bold bg-pink-950 border border-pink-900 text-pink-300 w-6 h-6 rounded-full flex items-center justify-center">0</span>
+                        </div>
+
+                        <!-- خادم معالجة الخلفية (Background Worker) -->
+                        <div id="asyncServerNode" class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-pink-950 border border-pink-800 flex items-center justify-center text-pink-400 text-xs">
+                                    <i class="fas fa-gears"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-xs">معالج المهام الخلفي (Background Worker)</h4>
+                                    <p id="asyncServerState" class="text-[9px] text-slate-500">ينتظر مهام من الطابور ليقوم بفرزها...</p>
+                                </div>
+                            </div>
+                            <span id="asyncServerIndicator" class="text-2xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded">خامل</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    العميل يستقبل رد "تم الاستلام" فوراً، والمعالجة تحدث لاحقاً دون إزعاج
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- شاشة إخراج تظهر تفاصيل العمليات (Terminal Console Log) -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                    <i class="fas fa-terminal"></i> لوحة تتبع تدفق الاتصالات والعمليات (System Activity Tracer)
+                </span>
+                <button onclick="clearConsole()" class="text-3xs text-slate-400 hover:text-slate-100 transition-all bg-slate-950 px-2 py-1 rounded border border-slate-800 cursor-pointer">
+                    مسح السجل
+                </button>
+            </div>
+            <!-- صندوق السجلات -->
+            <div id="terminal" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-28 overflow-y-auto text-3xs font-mono text-emerald-400 space-y-1">
+                <div>[SYSTEM] جاهز للاختبار. جربي الضغط على "طلب متزامن (REST HTTP)" لتلاحظي كيف يتجمد الموقع، ثم جربي البديل غير المتزامن!</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- الجزء البرمجي للتحكم بالمحاكاة -->
+    <script>
+        let isDelayed = false;
+        let asyncQueue = [];
+        let asyncQueueIdCounter = 0;
+        let isProcessingAsync = false;
+
+        function logMessage(system, type, text) {
+            const terminal = document.getElementById('terminal');
+            if (!terminal) return;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            let colorClass = "text-emerald-400";
+            if (type === 'sync') colorClass = "text-cyan-400 font-semibold";
+            if (type === 'async') colorClass = "text-pink-400 font-semibold";
+            if (type === 'error') colorClass = "text-rose-500 font-bold animate-pulse";
+            if (type === 'system') colorClass = "text-amber-400";
+
+            const logElement = document.createElement('div');
+            logElement.className = `${colorClass} py-0.5`;
+            logElement.innerHTML = `[${time}] [${system}] ${text}`;
+            
+            terminal.appendChild(logElement);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearConsole() {
+            const terminal = document.getElementById('terminal');
+            if (terminal) {
+                terminal.innerHTML = `<div>[SYSTEM] تم تنظيف شاشة التتبع... الجلسة نشطة</div>`;
+            }
+        }
+
+        // تفعيل أو إلغاء تفعيل حقن بطء وتأخير السيرفر
+        function toggleServerDelay() {
+            isDelayed = !isDelayed;
+            const btn = document.getElementById('btnDelay');
+            const syncCard = document.getElementById('syncCard');
+            const asyncCard = document.getElementById('asyncCard');
+
+            if (isDelayed) {
+                btn.innerHTML = `<i class="fas fa-clock animate-spin-slow"></i> حقن تأخير بالسيرفر (فعال: 4 ثوانٍ)`;
+                btn.className = "w-full bg-rose-600 hover:bg-rose-500 active:scale-95 transition-all text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 cursor-pointer";
+                logMessage('SYSTEM', 'error', 'تنبيه: تم تفعيل حقن البطء برمجياً. جميع العمليات على السيرفر ستستغرق الآن 4 ثوانٍ كاملة لمعالجتها!');
+                
+                if (syncCard) syncCard.classList.add('glow-red');
+                if (asyncCard) asyncCard.classList.add('glow-red');
+            } else {
+                btn.innerHTML = `<i class="fas fa-clock"></i> حقن تأخير بالسيرفر (خامل)`;
+                btn.className = "w-full bg-slate-850 hover:bg-slate-800 active:scale-95 transition-all text-rose-400 font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-700 cursor-pointer";
+                logMessage('SYSTEM', 'system', 'تم إلغاء تفعيل حقن البطء. السيرفر عاد للعمل بوضعه السريع الطبيعي (1 ثانية).');
+                
+                if (syncCard) {
+                    syncCard.classList.remove('glow-red');
+                    syncCard.classList.add('glow-cyan');
+                }
+                if (asyncCard) {
+                    asyncCard.classList.remove('glow-red');
+                    asyncCard.classList.add('glow-pink');
+                }
+            }
+        }
+
+        // محاكاة الطلب المتزامن (REST HTTP)
+        function sendSyncRequest() {
+            const delayTime = isDelayed ? 4000 : 1000;
+            logMessage('CLIENT_UI', 'sync', 'طلب متزامن جديد تم إرساله من العميل [رغد الغزاوي].');
+
+            // 1. تجميد واجهة المتسخدم بالكامل لإظهار تأثير البلوك (Blocking) للأستاذ
+            const overlay = document.getElementById('syncBlockingOverlay');
+            const clientState = document.getElementById('syncClientState');
+            const serverState = document.getElementById('syncServerState');
+            const clientInd = document.getElementById('syncClientIndicator');
+            const serverInd = document.getElementById('syncServerIndicator');
+            const syncDot = document.getElementById('syncDot');
+
+            if (overlay) {
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                overlay.classList.add('opacity-100');
+            }
+            if (clientState) clientState.innerHTML = `<span class="text-cyan-400 font-bold">معلق ومقفل!</span> ينتظر الاستجابة...`;
+            if (clientInd) {
+                clientInd.innerText = "معلق (Blocked)";
+                clientInd.className = "text-3xs text-rose-400 bg-rose-950 px-1.5 py-0.5 rounded border border-rose-900";
+            }
+
+            // حركة النقطة عبر الخط للتعبير عن إرسال البيانات
+            if (syncDot) {
+                syncDot.style.transition = `left ${delayTime}ms linear`;
+                syncDot.style.opacity = '1';
+                syncDot.style.left = '90%';
+            }
+
+            logMessage('REST_GATEWAY', 'sync', `تم حجز خط اتصال مباشر مع السيرفر. جاري انتظار السيرفر لمعالجة الطلب لمدة ${delayTime / 1000} ثوانٍ...`);
+
+            setTimeout(() => {
+                // وصول البيانات للسيرفر وبدء المعالجة
+                if (serverState) serverState.innerText = "جاري معالجة الطلب وإعداد الرد الفوري...";
+                if (serverInd) {
+                    serverInd.innerText = "معالجة نشطة";
+                    serverInd.className = "text-2xs bg-cyan-950 border border-cyan-900 text-cyan-400 px-2 py-0.5 rounded";
+                }
+
+                setTimeout(() => {
+                    // فك التجميد بعد انتهاء وقت المعالجة بالكامل
+                    if (overlay) {
+                        overlay.classList.remove('opacity-100');
+                        overlay.classList.add('opacity-0', 'pointer-events-none');
+                    }
+                    if (clientState) clientState.innerText = "تم استلام الرد بنجاح! حر طليق.";
+                    if (clientInd) {
+                        clientInd.innerText = "مستقر";
+                        clientInd.className = "text-3xs text-slate-500";
+                    }
+                    if (serverState) serverState.innerText = "تم معالجة الطلب وإرسال الرد بنجاح.";
+                    if (serverInd) {
+                        serverInd.innerText = "خامل";
+                        serverInd.className = "text-2xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded";
+                    }
+                    if (syncDot) {
+                        syncDot.style.transition = 'none';
+                        syncDot.style.opacity = '0';
+                        syncDot.style.left = '0';
+                    }
+
+                    logMessage('API_SERVER', 'sync', 'اكتملت المعالجة وإرسال استجابة HTTP 200 OK للعميل بنجاح.');
+                }, delayTime / 2);
+
+            }, delayTime / 2);
+        }
+
+        // محاكاة الطلب غير المتزامن (Asynchronous Queue)
+        function sendAsyncRequest() {
+            asyncQueueIdCounter++;
+            const taskId = `REQ-ASYNC-00${asyncQueueIdCounter}`;
+            asyncQueue.push(taskId);
+
+            logMessage('CLIENT_UI', 'async', `طلب غير متزامن جديد تم توليده بالرقم: ${taskId}`);
+            logMessage('CLIENT_UI', 'async', 'العميل يستقبل استجابة فورية: [202 Accepted] - الواجهة حرة تماماً ولم تقفل!');
+
+            const clientState = document.getElementById('asyncClientState');
+            if (clientState) clientState.innerHTML = `تم تأكيد إرسال الطلب <span class="text-pink-400 font-bold font-mono">${taskId}</span> للطابور. يمكنك الاستمرار بالضغط!`;
+
+            // تحديث عرض الطابور حركياً
+            updateQueueVisuals();
+
+            // بدء معالجة الخلفية للطلبات المتراكمة في الطابور إن لم تكن نشطة
+            if (!isProcessingAsync) {
+                processNextAsyncItem();
+            }
+        }
+
+        // معالجة العناصر من الطابور واحداً تلو الآخر في الخلفية
+        function processNextAsyncItem() {
+            if (asyncQueue.length === 0) {
+                isProcessingAsync = false;
+                const serverState = document.getElementById('asyncServerState');
+                const serverInd = document.getElementById('asyncServerIndicator');
+                if (serverState) serverState.innerText = "ينتظر مهام من الطابور ليقوم بفرزها...";
+                if (serverInd) {
+                    serverInd.innerText = "خامل";
+                    serverInd.className = "text-2xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded";
+                }
+                return;
+            }
+
+            isProcessingAsync = true;
+            const currentTask = asyncQueue.shift();
+            const delayTime = isDelayed ? 4000 : 1000;
+
+            const serverState = document.getElementById('asyncServerState');
+            const serverInd = document.getElementById('asyncServerIndicator');
+
+            if (serverState) serverState.innerHTML = `جاري معالجة الطلب في الخلفية: <span class="text-pink-400 font-bold font-mono">${currentTask}</span>`;
+            if (serverInd) {
+                serverInd.innerText = "يعالج في الخلفية";
+                serverInd.className = "text-2xs bg-pink-950 border border-pink-900 text-pink-400 px-2 py-0.5 rounded animate-pulse";
+            }
+
+            logMessage('ASYNC_WORKER', 'async', `بدء تفريغ ومعالجة المهمة: ${currentTask} من الطابور في الخلفية. تستغرق المعالجة ${delayTime / 1000} ثوانٍ...`);
+
+            // تحديث عرض الطابور بعد سحب العنصر
+            updateQueueVisuals();
+
+            setTimeout(() => {
+                logMessage('ASYNC_WORKER', 'async', `تم الانتهاء تماماً من معالجة وحفظ المهمة ${currentTask} بنجاح دون أي إزعاج للمستخدم.`);
+                
+                // الانتقال لمعالجة العنصر التالي في الطابور
+                processNextAsyncItem();
+            }, delayTime);
+        }
+
+        // دالة تحديث شكل طابور الرسائل في الواجهة
+        function updateQueueVisuals() {
+            const queueContainer = document.getElementById('asyncQueueContainer');
+            const queueCountBadge = document.getElementById('asyncQueueCount');
+            const emptyState = document.getElementById('asyncEmptyState');
+
+            if (!queueContainer || !queueCountBadge) return;
+
+            // تحديث الرقم في البادج
+            queueCountBadge.innerText = asyncQueue.length;
+
+            // تصفير وعرض العناصر
+            queueContainer.innerHTML = '';
+
+            if (asyncQueue.length === 0) {
+                if (emptyState) emptyState.style.display = 'block';
+                queueContainer.innerHTML = '<span id="asyncEmptyState" class="text-[9px] text-slate-600 px-2">الطابور فارغ...</span>';
+            } else {
+                asyncQueue.forEach(taskId => {
+                    const box = document.createElement('div');
+                    box.className = "bg-pink-950/60 border border-pink-500/30 text-[9px] font-mono font-bold text-pink-300 px-2 py-1 rounded whitespace-nowrap animate-fadeIn";
+                    box.innerText = taskId;
+                    queueContainer.appendChild(box);
+                });
+            }
+        }
+
+        // تصفير وإعادة تهيئة نظام المحاكاة
+        function resetSimulation() {
+            asyncQueue = [];
+            asyncQueueIdCounter = 0;
+            isProcessingAsync = false;
+
+            // تصفير واجهة المتزامن
+            const overlay = document.getElementById('syncBlockingOverlay');
+            const clientState = document.getElementById('syncClientState');
+            const serverState = document.getElementById('syncServerState');
+            const clientInd = document.getElementById('syncClientIndicator');
+            const serverInd = document.getElementById('syncServerIndicator');
+            const syncDot = document.getElementById('syncDot');
+
+            if (overlay) {
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+            if (clientState) clientState.innerText = "جاهز، لم يتم إرسال طلبات بعد.";
+            if (serverState) serverState.innerText = "في وضع الاستعداد...";
+            if (clientInd) {
+                clientInd.innerText = "مستقر";
+                clientInd.className = "text-3xs text-slate-500";
+            }
+            if (serverInd) {
+                serverInd.innerText = "خامل";
+                serverInd.className = "text-2xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded";
+            }
+            if (syncDot) {
+                syncDot.style.transition = 'none';
+                syncDot.style.opacity = '0';
+                syncDot.style.left = '0';
+            }
+
+            // تصفير واجهة غير المتزامن
+            const asyncClientState = document.getElementById('asyncClientState');
+            const asyncServerState = document.getElementById('asyncServerState');
+            const asyncServerIndicator = document.getElementById('asyncServerIndicator');
+
+            if (asyncClientState) asyncClientState.innerText = "جاهز، ويستقبل طلبات فورية دوماً.";
+            if (asyncServerState) asyncServerState.innerText = "ينتظر مهام من الطابور ليقوم بفرزها...";
+            if (asyncServerIndicator) {
+                asyncServerIndicator.innerText = "خامل";
+                asyncServerIndicator.className = "text-2xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded";
+            }
+
+            updateQueueVisuals();
+
+            // إلغاء تفعيل التأخير إن وجد
+            if (isDelayed) {
+                toggleServerDelay();
+            }
+
+            logMessage('SYSTEM', 'system', 'تم إعادة ضبط نظام المحاكاة وتصفير جميع المتغيرات والطوابير المعلقة.');
+        }
+    </script>
+</body>
+</html>
