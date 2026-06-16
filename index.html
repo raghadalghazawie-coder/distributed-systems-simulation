@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة الأنظمة الموزعة: Monolith vs Modular Monolith</title>
+    <!-- تضمين مكتبة Tailwind CSS للتصميم العصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تضمين مكتبة FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .glow-green {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+        }
+        .glow-yellow {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- رأس الصفحة والمعلومات الدراسية -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
+                    لوحة محاكاة النظم الموزعة والمترابطة
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">تطبيق تفاعلي للمقارنة بين معماريّة Monolith و Modular Monolith وعزل الأعطال</p>
+            </div>
+            
+            <!-- تم حذف الرقم الجامعي وتثبيت اسم رغد الغزاوي كاسم ثابت واحترافي للتقييم -->
+            <div class="flex flex-wrap gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400 px-2">اسم الطالبة:</div>
+                <input type="text" id="studentName" value="رغد الغزاوي" placeholder="اكتبي اسمكِ هنا" class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold text-indigo-300 w-48 text-center">
+            </div>
+        </div>
+    </header>
+
+    <!-- محتوى لوحة التحكم الرئيسي -->
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- لوحة التحكم بالعمليات وحقن الأخطاء -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-md font-bold mb-4 text-indigo-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fas fa-sliders"></i> لوحة التحكم بالعمليات
+                </h2>
+                
+                <div class="flex flex-col gap-3">
+                    <button onclick="simulateSuccessOrder()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer">
+                        <i class="fas fa-shopping-cart"></i>
+                        إرسال طلب شراء ناجح
+                    </button>
+
+                    <button onclick="injectShippingFault()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 cursor-pointer">
+                        <i class="fas fa-bug"></i>
+                        حقن خلل في خدمة الشحن
+                    </button>
+
+                    <button onclick="resetSystems()" class="w-full bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-slate-300 font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-700 cursor-pointer">
+                        <i class="fas fa-rotate-right"></i>
+                        إعادة ضبط كلي للنظام
+                    </button>
+                </div>
+            </div>
+
+            <!-- شرح سريع للمفهوم يقرأه الأستاذ على الواجهة -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow hidden lg:block">
+                <h3 class="text-sm font-bold text-slate-300 mb-2">كيف تلاحظين الفارق؟</h3>
+                <ul class="text-xs text-slate-400 space-y-2 list-disc list-inside">
+                    <li>عند إرسال طلب الشراء العادي، كلا النظامين يمرران البيانات عبر جميع الخدمات بنجاح (مضاءة بالأخضر).</li>
+                    <li>عند <span class="text-rose-400 font-semibold">حقن الخلل</span>: ينهار نظام الـ Monolith بأكمله بسبب تداخل العمليات في ذاكرة واحدة وقاعدة بيانات واحدة، بينما نظام الـ Modular يعزل المشكلة في وحدة الشحن فقط وتظل الخدمات الأخرى تعمل بنجاح!</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ساحة عرض المحاكاة الهيكلية للنظامين -->
+        <section class="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- النظام الأول: Monolith (الأحادي التقليدي) -->
+            <div id="monolithCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-green">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-red-950 text-red-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-red-800/40">بيئة عملية واحدة</span>
+                            <h3 class="text-lg font-bold text-slate-100 mt-1">نظام Monolith التقليدي</h3>
+                        </div>
+                        <div id="monolithStatusBadge" class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-800/30">
+                            <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> نشط ومستقر
+                        </div>
+                    </div>
+
+                    <!-- تمثيل الخدمات بداخل هيكل المونوليث -->
+                    <div id="monolithContainer" class="bg-slate-950 border border-slate-800 rounded-xl p-4 relative overflow-hidden transition-colors duration-500 min-h-[300px] flex flex-col justify-around">
+                        
+                        <!-- وحدة المستخدمين -->
+                        <div id="monoUser" class="flex items-center gap-4 bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="w-10 h-10 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400">
+                                <i class="fas fa-users text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">بوابة المستخدمين (User Service)</h4>
+                                <p class="text-3xs text-slate-400">التحقق من الهوية والصلاحيات</p>
+                            </div>
+                        </div>
+
+                        <!-- وحدة الطلبات -->
+                        <div id="monoOrder" class="flex items-center gap-4 bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="w-10 h-10 rounded-full bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400">
+                                <i class="fas fa-file-invoice text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">وحدة إدارة الطلبات (Order Module)</h4>
+                                <p class="text-3xs text-slate-400">إنشاء ومعالجة فواتير الشراء</p>
+                            </div>
+                        </div>
+
+                        <!-- وحدة الدفع -->
+                        <div id="monoPayment" class="flex items-center gap-4 bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="w-10 h-10 rounded-full bg-amber-950 border border-amber-800 flex items-center justify-center text-amber-400">
+                                <i class="fas fa-credit-card text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">وحدة الدفع المالي (Payment Module)</h4>
+                                <p class="text-3xs text-slate-400">معالجة الدفع عبر البنك</p>
+                            </div>
+                        </div>
+
+                        <!-- وحدة الشحن -->
+                        <div id="monoShipping" class="flex items-center gap-4 bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="w-10 h-10 rounded-full bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400">
+                                <i class="fas fa-truck text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">وحدة الشحن والتوصيل (Shipping Module)</h4>
+                                <p class="text-3xs text-slate-400">تجهيز وإرسال الطلبات للعميل</p>
+                            </div>
+                        </div>
+
+                        <!-- طبقة تغطي النظام بأكمله عند الانهيار التام -->
+                        <div id="monolithCrashOverlay" class="absolute inset-0 bg-rose-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center opacity-0 pointer-events-none transition-all duration-500">
+                            <div class="w-16 h-16 rounded-full bg-rose-900 border-2 border-rose-500 flex items-center justify-center text-rose-200 animate-bounce mb-3">
+                                <i class="fas fa-triangle-exclamation text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-black text-rose-200">انهيار كامل للنظام (System Down)</h4>
+                            <p class="text-xs text-rose-300 mt-2">حدث خطأ غير معالج في وحدة الشحن أدى إلى استهلاك الذاكرة وتوقف العملية الأساسية (Process Crash) بالكامل لجميع الوحدات المترابطة.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 text-3xs text-slate-500 text-center">
+                    ملاحظة: قاعدة بيانات واحدة مشتركة + تشغيل برمجى واحد (Single Runtime)
+                </div>
+            </div>
+
+            <!-- النظام الثاني: Modular Monolith (الأحادي المنظم والمجزأ) -->
+            <div id="modularCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-green">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-indigo-950 text-indigo-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-indigo-800/40">وحدات معزولة منطقياً</span>
+                            <h3 class="text-lg font-bold text-slate-100 mt-1">نظام Modular Monolith</h3>
+                        </div>
+                        <div id="modularStatusBadge" class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-800/30">
+                            <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> نشط ومستقر
+                        </div>
+                    </div>
+
+                    <!-- تمثيل الخدمات بداخل هيكل الموديولار مونوليث -->
+                    <div id="modularContainer" class="bg-slate-950 border border-slate-800 rounded-xl p-4 transition-colors duration-500 min-h-[300px] flex flex-col justify-around gap-2">
+                        
+                        <!-- وحدة المستخدمين المعزولة -->
+                        <div id="modUser" class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400">
+                                    <i class="fas fa-users text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm">بوابة المستخدمين (User Module)</h4>
+                                    <p class="text-3xs text-slate-400">حماية تامة للذاكرة عن باقي النظام</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-900">مستقل</span>
+                        </div>
+
+                        <!-- وحدة الطلبات المعزولة -->
+                        <div id="modOrder" class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400">
+                                    <i class="fas fa-file-invoice text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm">إدارة الطلبات (Order Module)</h4>
+                                    <p class="text-3xs text-slate-400">تواصل عبر واجهات برمجية محددة</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-900">مستقل</span>
+                        </div>
+
+                        <!-- وحدة الدفع المعزولة -->
+                        <div id="modPayment" class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-amber-950 border border-amber-800 flex items-center justify-center text-amber-400">
+                                    <i class="fas fa-credit-card text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm">الدفع المالي (Payment Module)</h4>
+                                    <p class="text-3xs text-slate-400">أمن وعزل تام لمعاملات الدفع</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-900">مستقل</span>
+                        </div>
+
+                        <!-- وحدة الشحن المعزولة -->
+                        <div id="modShipping" class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 transition-all duration-300 relative overflow-hidden">
+                            <div class="flex items-center gap-4">
+                                <div id="modShippingIcon" class="w-10 h-10 rounded-full bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400 transition-colors duration-300">
+                                    <i class="fas fa-truck text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm">الشحن والتوصيل (Shipping Module)</h4>
+                                    <p class="text-3xs text-slate-400">وحدة محاطة ببروتوكول عزل الأخطاء</p>
+                                </div>
+                            </div>
+                            <span id="modShippingBadge" class="text-3xs text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-900">مستقل</span>
+                            
+                            <!-- غطاء عزل لخطأ وحدة الشحن فقط -->
+                            <div id="modShippingCrashOverlay" class="absolute inset-0 bg-rose-950/95 flex items-center justify-between px-4 opacity-0 pointer-events-none transition-all duration-300">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-circle-exclamation text-rose-400 text-lg animate-pulse"></i>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-rose-200">الخدمة معطلة (Fault Isolated)</h4>
+                                        <p class="text-[10px] text-rose-300">تم عزل الخطأ في هذه الوحدة فقط بنجاح.</p>
+                                    </div>
+                                </div>
+                                <span class="text-2xs bg-rose-900/50 text-rose-300 border border-rose-700 rounded px-1.5 py-0.5">معزول</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 text-3xs text-slate-500 text-center">
+                    ملاحظة: كود أحادي لكنه منقسم برمجياً لحدود صارمة جداً (Strict Boundaries)
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- شاشة إخراج تظهر تفاصيل العمليات (Terminal Console Log) -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                    <i class="fas fa-terminal"></i> لوحة تعقب ومراقبة أحداث النظام (System Tracing Terminal)
+                </span>
+                <button onclick="clearConsole()" class="text-3xs text-slate-400 hover:text-slate-100 transition-all bg-slate-950 px-2 py-1 rounded border border-slate-800 cursor-pointer">
+                    مسح السجل
+                </button>
+            </div>
+            <!-- صندوق السجلات -->
+            <div id="terminal" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-32 overflow-y-auto text-3xs font-mono text-emerald-400 space-y-1">
+                <div>[SYSTEM] جاهز للمحاكاة، اضغطي على "إرسال طلب شراء ناجح" لتبدئي اختبار السلوك البرمجي...</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- الجزء البرمجي الذكي للتحكم بالحركات والمحاكاة -->
+    <script>
+        // المتغيرات لحفظ حالة النظامين
+        let monolithStatus = 'healthy'; // 'healthy' أو 'crashed'
+        let modularStatus = 'healthy';  // 'healthy' أو 'shipping-fault'
+
+        // دالة مساعدة لإضافة سجل في الـ Terminal التخيلي
+        function logMessage(system, type, text) {
+            const terminal = document.getElementById('terminal');
+            if (!terminal) return;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            let colorClass = "text-emerald-400";
+            if (type === 'error') colorClass = "text-rose-500 font-bold";
+            if (type === 'warning') colorClass = "text-amber-500";
+            if (type === 'info') colorClass = "text-indigo-400";
+
+            const logElement = document.createElement('div');
+            logElement.className = `${colorClass} py-0.5`;
+            logElement.innerHTML = `[${time}] [${system}] ${text}`;
+            
+            terminal.appendChild(logElement);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // مسح جميع سجلات الكونسول
+        function clearConsole() {
+            const terminal = document.getElementById('terminal');
+            if (terminal) {
+                terminal.innerHTML = `<div>[SYSTEM] تم تنظيف السجلات وبدء كونسول تعقب جديد...</div>`;
+            }
+        }
+
+        // محاكاة إرسال طلب شراء ناجح
+        function simulateSuccessOrder() {
+            // جلب الاسم بشكل آمن تماماً وبدون أي أخطاء برمجية
+            const nameInput = document.getElementById('studentName');
+            const sName = nameInput ? nameInput.value.trim() : "رغد الغزاوي";
+            
+            logMessage('USER', 'info', `بدء طلب شراء جديد بواسطة العميل: ${sName}`);
+
+            // 1. محاكاة العمل على نظام Monolith
+            if (monolithStatus === 'crashed') {
+                logMessage('MONOLITH', 'error', 'فشل معالجة الطلب! النظام بأكمله معطل ومستمر بالانهيار.');
+            } else {
+                logMessage('MONOLITH', 'info', 'تم استلام طلب الشراء بنجاح. جاري التحقق من الحساب المالي لـ ' + sName);
+                
+                triggerGlow('monoUser', 'bg-emerald-950/80');
+                setTimeout(() => {
+                    if (monolithStatus !== 'crashed') {
+                        logMessage('MONOLITH', 'info', 'تم خصم المبلغ وتجهيز الفاتورة.');
+                        triggerGlow('monoOrder', 'bg-emerald-950/80');
+                        triggerGlow('monoPayment', 'bg-emerald-950/80');
+                    }
+                }, 400);
+
+                setTimeout(() => {
+                    if (monolithStatus !== 'crashed') {
+                        logMessage('MONOLITH', 'info', 'تم شحن وتوصيل الطرد بنجاح.');
+                        triggerGlow('monoShipping', 'bg-emerald-950/80');
+                        logMessage('MONOLITH', 'success', 'اكتملت العملية بالكامل بنجاح داخل الـ Monolith!');
+                    }
+                }, 800);
+            }
+
+            // 2. محاكاة العمل على نظام Modular Monolith
+            logMessage('MODULAR', 'info', 'تم استقبال الطلب داخل النطاق المستقل (Order Module).');
+            triggerGlow('modUser', 'bg-emerald-950/80');
+            
+            setTimeout(() => {
+                logMessage('MODULAR', 'info', 'تم معالجة الفاتورة بنجاح وتأكيد الدفع.');
+                triggerGlow('modOrder', 'bg-emerald-950/80');
+                triggerGlow('modPayment', 'bg-emerald-950/80');
+            }, 400);
+
+            setTimeout(() => {
+                if (modularStatus === 'shipping-fault') {
+                    logMessage('MODULAR', 'warning', 'تنبيه عزل الأعطال: وحدة الشحن معطلة حالياً. تم حفظ وتأمين الطلب بنجاح في قاعدة البيانات لجدولة الشحن لاحقاً.');
+                    logMessage('MODULAR', 'success', 'اكتملت عملية الدفع وحفظ الفاتورة بنجاح رغم توقف خدمة الشحن!');
+                } else {
+                    logMessage('MODULAR', 'info', 'تم تسليم طرد العميل إلى ناقل الشحن بنجاح.');
+                    triggerGlow('modShipping', 'bg-emerald-950/80');
+                    logMessage('MODULAR', 'success', 'اكتملت عملية الشراء والشحن بنجاح في نظام Modular Monolith!');
+                }
+            }, 800);
+        }
+
+        // دالة مساعدة لعمل وميض لوني عند سريان العملية
+        function triggerGlow(elementId, bgClass) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const originalBg = el.classList.contains('bg-slate-900') ? 'bg-slate-900' : 'bg-slate-950';
+            
+            el.classList.remove(originalBg);
+            el.classList.add(bgClass, 'scale-[1.02]', 'shadow-lg');
+            
+            setTimeout(() => {
+                el.classList.remove(bgClass, 'scale-[1.02]', 'shadow-lg');
+                el.classList.add(originalBg);
+            }, 600);
+        }
+
+        // دالة حقن الخلل في وحدة الشحن
+        function injectShippingFault() {
+            logMessage('SYSTEM', 'warning', 'تحذير: جاري محاكاة وحقن عطل برمجي فادح (Exception) في كود وحدة الشحن والتوصيل...');
+
+            // 1. سلوك نظام الـ Monolith في الانهيار
+            monolithStatus = 'crashed';
+            const monolithCard = document.getElementById('monolithCard');
+            const monolithCrashOverlay = document.getElementById('monolithCrashOverlay');
+            const monolithStatusBadge = document.getElementById('monolithStatusBadge');
+
+            if (monolithCard) {
+                monolithCard.classList.remove('glow-green');
+                monolithCard.classList.add('glow-red');
+            }
+            if (monolithStatusBadge) {
+                monolithStatusBadge.innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500"></span> معطل بالكامل`;
+                monolithStatusBadge.className = "flex items-center gap-1.5 text-xs text-rose-400 bg-rose-950/50 px-2.5 py-1 rounded-full border border-rose-800/30";
+            }
+            if (monolithCrashOverlay) {
+                monolithCrashOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                monolithCrashOverlay.classList.add('opacity-100');
+            }
+            
+            logMessage('MONOLITH', 'error', 'خطأ فادح: [Process Crash] أدى لانهيار الذاكرة المشتركة. تسبب هذا في توقف النظام بالكامل وشل بقية الوحدات السليمة!');
+
+            // 2. سلوك نظام Modular Monolith الذكي في العزل وصمود النظام
+            modularStatus = 'shipping-fault';
+            const modularCard = document.getElementById('modularCard');
+            const modShippingCrashOverlay = document.getElementById('modShippingCrashOverlay');
+            const modularStatusBadge = document.getElementById('modularStatusBadge');
+
+            if (modularCard) {
+                modularCard.classList.remove('glow-green');
+                modularCard.classList.add('glow-yellow');
+            }
+            if (modularStatusBadge) {
+                modularStatusBadge.innerHTML = `<span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span> يعمل جزئياً (مستقر)`;
+                modularStatusBadge.className = "flex items-center gap-1.5 text-xs text-amber-400 bg-amber-950/50 px-2.5 py-1 rounded-full border border-amber-800/30";
+            }
+            if (modShippingCrashOverlay) {
+                modShippingCrashOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                modShippingCrashOverlay.classList.add('opacity-100');
+            }
+
+            logMessage('MODULAR', 'warning', 'تنبيه: تم عزل الخلل بنجاح (Fault Isolation) ضمن نطاق وحدة الشحن فقط دون التأثير على عمليات الدفع وبقية الأقسام.');
+        }
+
+        // دالة إعادة تهيئة النظامين للوضع المستقر والطبيعي
+        function resetSystems() {
+            monolithStatus = 'healthy';
+            modularStatus = 'healthy';
+
+            // إعادة ضبط بطاقة Monolith
+            const monolithCard = document.getElementById('monolithCard');
+            const monolithCrashOverlay = document.getElementById('monolithCrashOverlay');
+            const monolithStatusBadge = document.getElementById('monolithStatusBadge');
+
+            if (monolithCard) {
+                monolithCard.classList.remove('glow-red');
+                monolithCard.classList.add('glow-green');
+            }
+            if (monolithStatusBadge) {
+                monolithStatusBadge.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> نشط ومستقر`;
+                monolithStatusBadge.className = "flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-800/30";
+            }
+            if (monolithCrashOverlay) {
+                monolithCrashOverlay.classList.remove('opacity-100');
+                monolithCrashOverlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+
+            // إعادة ضبط بطاقة Modular Monolith
+            const modularCard = document.getElementById('modularCard');
+            const modShippingCrashOverlay = document.getElementById('modShippingCrashOverlay');
+            const modularStatusBadge = document.getElementById('modularStatusBadge');
+
+            if (modularCard) {
+                modularCard.classList.remove('glow-yellow', 'glow-red');
+                modularCard.classList.add('glow-green');
+            }
+            if (modularStatusBadge) {
+                modularStatusBadge.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> نشط ومستقر`;
+                modularStatusBadge.className = "flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-800/30";
+            }
+            if (modShippingCrashOverlay) {
+                modShippingCrashOverlay.classList.remove('opacity-100');
+                modShippingCrashOverlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+
+            logMessage('SYSTEM', 'info', 'تم إعادة تشغيل جميع الأنظمة بنجاح وعادت للعمل بشكل مستقر.');
+        }
+    </script>
+</body>
+</html>
