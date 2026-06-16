@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة الأنظمة الموزعة: Kafka vs RabbitMQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .glow-amber {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+        .queue-item, .log-item {
+            transition: all 0.4s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400">
+                    لوحة محاكاة معالجة البيانات والرسائل الموزعة
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">تطبيق تفاعلي للمقارنة بين نظام الطوابير الذكي (RabbitMQ) ونظام سجلات الأحداث المستمر (Apache Kafka)</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400 px-2">اسم الطالبة:</div>
+                <input type="text" id="studentName" value="رغد الغزاوي" readonly class="bg-slate-900 border border-slate-750 rounded px-3 py-1.5 text-xs text-amber-400 font-bold w-48 text-center focus:outline-none">
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-md font-bold mb-4 text-amber-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fas fa-paper-plane"></i> توليد وإرسال البيانات
+                </h2>
+                
+                <div class="flex flex-col gap-3">
+                    <button onclick="sendToRabbitMQ()" class="w-full bg-orange-600 hover:bg-orange-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-orange-900/20 cursor-pointer">
+                        <i class="fas fa-tray"></i>
+                        إرسال رسالة إلى RabbitMQ
+                    </button>
+
+                    <button onclick="sendToKafka()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer">
+                        <i class="fas fa-stream"></i>
+                        إرسال حدث إلى Kafka
+                    </button>
+
+                    <div class="border-t border-slate-800 my-2"></div>
+
+                    <button onclick="consumeRabbitMQ()" class="w-full bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-orange-400 font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-700 cursor-pointer">
+                        <i class="fas fa-scissors"></i>
+                        استهلاك رسالة (RabbitMQ)
+                    </button>
+
+                    <button onclick="consumeKafka()" class="w-full bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-emerald-400 font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-700 cursor-pointer">
+                        <i class="fas fa-book-open"></i>
+                        قراءة السجل (Kafka)
+                    </button>
+
+                    <button onclick="resetSimulations()" class="w-full bg-slate-950 hover:bg-slate-900 text-slate-400 text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-800 cursor-pointer mt-2">
+                        <i class="fas fa-trash-can"></i>
+                        تفريغ الأنظمة
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow hidden lg:block">
+                <h3 class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-800 pb-2">ما هو الفارق الجوهري؟</h3>
+                <div class="text-[11px] text-slate-400 space-y-3 leading-relaxed">
+                    <p>
+                        💡 <strong class="text-orange-400">RabbitMQ (وسيط رسائل):</strong> يتبع مبدأ **Smart Broker**. بمجرد أن تقوم الخدمة بقراءة الرسالة واستهلاكها بنجاح، <span class="text-orange-300 font-bold">تُحذف الرسالة نهائياً</span> من الطابور (Queue) لتوفير المساحة.
+                    </p>
+                    <p>
+                        💡 <strong class="text-emerald-400">Apache Kafka (منصة بث أحداث):</strong> يتبع مبدأ **Dumb Broker / Smart Consumer**. يتم حفظ كافة الأحداث في سجل دائم مرتب (Append-Only Log). حتى لو قرأتها الخدمة، <span class="text-emerald-300 font-bold">تبقى الأحداث محفوظة</span> ويمكن إعادة قراءتها من أي نقطة زمنية عبر الـ Offset!
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-amber">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-amber-950 text-amber-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-amber-800/40">Classic Message Broker</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">نموذج طوابير RabbitMQ</h3>
+                        </div>
+                        <div class="text-2xs text-slate-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded">
+                            الرسائل تُحذف بعد القراءة
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[360px] flex flex-col justify-between">
+                        
+                        <div class="bg-orange-950/40 border border-orange-500/30 rounded-lg p-2 text-center text-xs font-bold text-orange-400 mb-4">
+                            <i class="fas fa-random mb-1 block"></i> الموجّه (Exchange)
+                        </div>
+
+                        <div class="flex-grow flex flex-col justify-center items-center p-3 border border-dashed border-slate-800 rounded-lg bg-slate-900/30">
+                            <span class="text-[10px] text-slate-500 font-bold mb-2">طابور الرسائل (Message Queue)</span>
+                            
+                            <div id="rabbitmqQueue" class="w-full flex flex-col-reverse gap-2 max-h-[200px] overflow-y-auto p-1">
+                                <div id="rabbitEmptyState" class="text-3xs text-slate-600 text-center py-6">الطابور فارغ حالياً... ارسلي رسالة</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full bg-orange-950 border border-orange-800 flex items-center justify-center text-orange-400 text-xs">
+                                <i class="fas fa-user-gear"></i>
+                            </div>
+                            <div class="flex-grow">
+                                <h4 class="font-bold text-3xs text-slate-200">الخدمة المستهلكة (Consumer)</h4>
+                                <p id="rabbitConsumerText" class="text-[9px] text-slate-500">في انتظار رسائل جديدة لمعالجتها...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    نمط تفريغ الطوابير التقليدي (FIFO - First In First Out)
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-emerald">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-emerald-950 text-emerald-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-emerald-800/40">Distributed Commit Log</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">نموذج بث سجلات Apache Kafka</h3>
+                        </div>
+                        <div class="text-2xs text-slate-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded">
+                            الأحداث مستمرة ولا تُحذف
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[360px] flex flex-col justify-between">
+                        
+                        <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2 text-center text-xs font-bold text-emerald-400 mb-4">
+                            <i class="fas fa-folder-tree mb-1 block"></i> الموضوع: `orders-topic` (Partition 0)
+                        </div>
+
+                        <div class="flex-grow flex flex-col justify-center items-center p-3 border border-dashed border-slate-800 rounded-lg bg-slate-900/30">
+                            <span class="text-[10px] text-slate-500 font-bold mb-2">سجل الأحداث العام المتسلسل (Commit Log)</span>
+                            
+                            <div id="kafkaLog" class="w-full flex flex-col gap-2 max-h-[200px] overflow-y-auto p-1">
+                                <div id="kafkaEmptyState" class="text-3xs text-slate-600 text-center py-6">السجل فارغ... أطلقي حدثاً جديداً</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-full bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 text-xs">
+                                    <i class="fas fa-eye"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs text-slate-200">مؤشر القراءة للخدمة (Consumer)</h4>
+                                    <p id="kafkaConsumerText" class="text-[9px] text-slate-500">مؤشر القراءة الحالي (Offset): <span id="currentOffset" class="text-emerald-400 font-bold">0</span></p>
+                                </div>
+                            </div>
+                            <span class="text-[9px] bg-emerald-950 border border-emerald-900 text-emerald-400 px-2 py-0.5 rounded-md">Smart Consumer</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    تعتمد على الحفظ المستمر والقدرة على إعادة التشغيل (Replayability)
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-900 border-t border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <i class="fas fa-terminal"></i> سجل مراقبة البيانات الحيّة (Broker Monitor Console)
+                </span>
+                <button onclick="clearConsole()" class="text-3xs text-slate-400 hover:text-slate-100 transition-all bg-slate-950 px-2 py-1 rounded border border-slate-800 cursor-pointer">
+                    مسح السجل
+                </button>
+            </div>
+            <div id="terminal" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-28 overflow-y-auto text-3xs font-mono text-emerald-400 space-y-1">
+                <div>[SYSTEM] جاهز للمقارنة التفاعلية، أرسلي بعض البيانات لاختبار سلوك الأنظمة...</div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let rabbitMessagesCount = 0;
+        let kafkaLogsCount = 0;
+        let kafkaCurrentReadIndex = 0;
+
+        const rabbitQueueData = [];
+        const kafkaLogData = [];
+
+        function logMessage(system, type, text) {
+            const terminal = document.getElementById('terminal');
+            if (!terminal) return;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            let colorClass = "text-emerald-400";
+            if (type === 'rabbit') colorClass = "text-orange-400";
+            if (type === 'kafka') colorClass = "text-emerald-400 font-semibold";
+            if (type === 'info') colorClass = "text-blue-400";
+
+            const logElement = document.createElement('div');
+            logElement.className = `${colorClass} py-0.5`;
+            logElement.innerHTML = `[${time}] [${system}] ${text}`;
+            
+            terminal.appendChild(logElement);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('terminal').innerHTML = `<div>[SYSTEM] تم بدء مراقبة نظيفة...</div>`;
+        }
+
+        // إرسال رسالة إلى RabbitMQ
+        function sendToRabbitMQ() {
+            rabbitMessagesCount++;
+            const msgId = `MSG-00${rabbitMessagesCount}`;
+            rabbitQueueData.push(msgId);
+            
+            logMessage('RabbitMQ_Broker', 'rabbit', `تم استقبال رسالة جديدة من [رغد الغزاوي] وحفظها في الطابور بمعرّف: ${msgId}`);
+            
+            // إخفاء الحالة الفارغة
+            document.getElementById('rabbitEmptyState').style.display = 'none';
+            
+            // بناء عنصر الرسالة حركياً
+            const queueContainer = document.getElementById('rabbitmqQueue');
+            const msgBox = document.createElement('div');
+            msgBox.id = `rabbit-msg-${msgId}`;
+            msgBox.className = "queue-item bg-orange-950/60 border border-orange-500/40 rounded-lg p-2 flex justify-between items-center text-xs animate-fadeIn";
+            msgBox.innerHTML = `
+                <span class="font-mono text-orange-400 font-bold">${msgId}</span>
+                <span class="text-[9px] text-slate-400">طلب معلق (Pending)</span>
+            `;
+            queueContainer.appendChild(msgBox);
+        }
+
+        // استهلاك وقراءة رسالة من RabbitMQ
+        function consumeRabbitMQ() {
+            if (rabbitQueueData.length === 0) {
+                logMessage('RabbitMQ_Broker', 'rabbit', 'تحذير: لا توجد أي رسائل معلقة في الطابور لاستهلاكها!');
+                return;
+            }
+
+            // سحب أول رسالة دخلت (FIFO)
+            const consumedMsg = rabbitQueueData.shift();
+            logMessage('RabbitMQ_Consumer', 'rabbit', `الخدمة تسحب الرسالة ${consumedMsg} بنجاح. جاري المعالجة ثم <span class="underline">حذفها نهائياً</span> من الطابور.`);
+
+            // تحديث واجهة الخدمة المستهلكة
+            document.getElementById('rabbitConsumerText').innerHTML = `تم استهلاك ومعالجة الرسالة بنجاح: <span class="text-orange-400 font-bold font-mono">${consumedMsg}</span>`;
+
+            // إزالة العنصر المرئي من الطابور نهائياً لإثبات الفكرة للأستاذ
+            const msgElement = document.getElementById(`rabbit-msg-${consumedMsg}`);
+            if (msgElement) {
+                msgElement.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    msgElement.remove();
+                    if (rabbitQueueData.length === 0) {
+                        document.getElementById('rabbitEmptyState').style.display = 'block';
+                    }
+                }, 400);
+            }
+        }
+
+        // إرسال حدث إلى Kafka
+        function sendToKafka() {
+            const currentOffsetValue = kafkaLogData.length;
+            const logId = `EVT-Offset-${currentOffsetValue}`;
+            kafkaLogData.push({ id: logId, offset: currentOffsetValue });
+
+            logMessage('Kafka_Cluster', 'kafka', `تم تدوين حدث جديد بشكل دائم في السجل عند Offset: ${currentOffsetValue} بواسطة العميل [رغد الغزاوي]`);
+
+            document.getElementById('kafkaEmptyState').style.display = 'none';
+
+            // بناء سجل الأحداث في الواجهة
+            const logContainer = document.getElementById('kafkaLog');
+            const logBox = document.createElement('div');
+            logBox.id = `kafka-log-${currentOffsetValue}`;
+            logBox.className = "log-item bg-slate-900 border border-slate-800 rounded-lg p-2 flex justify-between items-center text-xs";
+            logBox.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded text-3xs font-mono font-bold">Offset ${currentOffsetValue}</span>
+                    <span class="font-mono text-slate-300">${logId}</span>
+                </div>
+                <span id="kafka-status-${currentOffsetValue}" class="text-[9px] text-slate-500">غير مقروء</span>
+            `;
+            logContainer.appendChild(logBox);
+        }
+
+        // قراءة حدث من كافكا دون حذفه
+        function consumeKafka() {
+            if (kafkaLogData.length === 0) {
+                logMessage('Kafka_Consumer', 'kafka', 'تحذير: السجل فارغ تماماً، لا توجد أحداث لبثها!');
+                return;
+            }
+
+            if (kafkaCurrentReadIndex >= kafkaLogData.length) {
+                logMessage('Kafka_Consumer', 'info', 'الخدمة قرأت جميع الأحداث المتوفرة بالفعل! السجل لا زال يحتفظ بها، ويمكن إعادة قراءتها من البداية في أي وقت.');
+                return;
+            }
+
+            const currentEvent = kafkaLogData[kafkaCurrentReadIndex];
+            logMessage('Kafka_Consumer', 'kafka', `الخدمة تقرأ الحدث عند Offset: ${currentEvent.offset}. <span class="text-emerald-400 font-bold">تنبيه: الحدث يبقى ثابتاً بالسجل ولا يُحذف!</span>`);
+
+            // تلوين العنصر في السجل لتوضيح أنه قُرئ مع بقائه موجوداً
+            const statusLabel = document.getElementById(`kafka-status-${currentEvent.offset}`);
+            const boxElement = document.getElementById(`kafka-log-${currentEvent.offset}`);
+            if (statusLabel && boxElement) {
+                statusLabel.innerText = "تمت قراءته 👍";
+                statusLabel.className = "text-[9px] text-emerald-400 font-bold";
+                boxElement.classList.add('border-emerald-900/50', 'bg-emerald-950/10');
+            }
+
+            // تحريك مؤشر القراءة للأمام (Offset Pointer)
+            kafkaCurrentReadIndex++;
+            document.getElementById('currentOffset').innerText = kafkaCurrentReadIndex;
+            document.getElementById('kafkaConsumerText').innerHTML = `مؤشر القراءة الحالي (Offset): <span class="text-emerald-400 font-bold">${kafkaCurrentReadIndex}</span>`;
+        }
+
+        // إعادة تصفير المحاكاة
+        function resetSimulations() {
+            rabbitQueueData.length = 0;
+            kafkaLogData.length = 0;
+            rabbitMessagesCount = 0;
+            kafkaLogsCount = 0;
+            kafkaCurrentReadIndex = 0;
+
+            document.getElementById('rabbitmqQueue').innerHTML = `<div id="rabbitEmptyState" class="text-3xs text-slate-600 text-center py-6">الطابور فارغ حالياً... ارسلي رسالة</div>`;
+            document.getElementById('kafkaLog').innerHTML = `<div id="kafkaEmptyState" class="text-3xs text-slate-600 text-center py-6">السجل فارغ... أطلقي حدثاً جديداً</div>`;
+            
+            document.getElementById('currentOffset').innerText = '0';
+            document.getElementById('rabbitConsumerText').innerText = 'في انتظار رسائل جديدة لمعالجتها...';
+            document.getElementById('kafkaConsumerText').innerHTML = `مؤشر القراءة الحالي (Offset): <span id="currentOffset" class="text-emerald-400 font-bold">0</span>`;
+            
+            logMessage('SYSTEM', 'info', 'تم تفريغ مستودعات البيانات وإعادة ضبط المؤشرات لكلا الوسيطين بنجاح.');
+        }
+    </script>
+</body>
+</html>
