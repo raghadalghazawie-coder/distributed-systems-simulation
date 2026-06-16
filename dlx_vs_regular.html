@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>محاكاة DLX vs Regular Queue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+    <header class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-rose-400">قوائم الرسائل الميتة (DLX) مقابل العادية</h1>
+        <p class="text-slate-400 mt-2">كيف تتعامل الأنظمة مع الرسائل الفاشلة؟</p>
+    </header>
+
+    <main class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Regular -->
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-slate-200">Regular Queue</h2>
+            <p class="text-sm text-slate-300 mb-4">في حال فشل المعالجة، قد تضيع الرسالة أو تسبب تكدساً للنظام.</p>
+            <button onclick="runSim('Regular')" class="w-full bg-slate-700 py-2 rounded-lg">إرسال رسالة عادية</button>
+        </div>
+
+        <!-- DLX -->
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-rose-500">Dead Letter Queue (DLX)</h2>
+            <p class="text-sm text-slate-300 mb-4">عند فشل المعالجة، يتم تحويل الرسالة تلقائياً لـ DLX للتحقيق لاحقاً.</p>
+            <button onclick="runSim('DLX')" class="w-full bg-rose-700 py-2 rounded-lg">إرسال رسالة مع حماية DLX</button>
+        </div>
+    </main>
+
+    <div id="log" class="max-w-4xl mx-auto mt-6 bg-slate-900 p-4 rounded border border-slate-800 font-mono text-xs text-rose-400 h-32 overflow-y-auto">
+        [النظام] جاهز...
+    </div>
+
+    <script>
+        function runSim(type) {
+            const log = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            let msg = type === 'Regular' 
+                ? "Regular: فشلت المعالجة! الرسالة فقدت أو تسببت في خطأ بالنظام."
+                : "DLX: فشلت المعالجة! تم نقل الرسالة بأمان إلى Dead Letter Queue للمراجعة.";
+            log.innerHTML += `<div>[${time}] ${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
+</body>
+</html>
