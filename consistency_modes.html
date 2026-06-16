@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة الأنظمة الموزعة: Strong vs Eventual Consistency</title>
+    <!-- تضمين مكتبة Tailwind CSS للتصميم العصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تضمين مكتبة FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .glow-teal {
+            box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+        }
+        .glow-indigo {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-teal-500 selection:text-slate-950">
+
+    <!-- رأس الصفحة والمعلومات الدراسية -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-indigo-400">
+                    لوحة محاكاة النظم الموزعة والمترابطة
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">تطبيق تفاعلي للمقارنة بين التناسق اللحظي الصارم (Strong Consistency) والتناسق التدريجي للمعلومات (Eventual Consistency)</p>
+            </div>
+            
+            <!-- معلومات الطالبة ثابتة لمنع الأخطاء البرمجية -->
+            <div class="flex flex-wrap gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400 px-2">اسم الطالبة:</div>
+                <input type="text" id="studentName" value="رغد الغزاوي" readonly class="bg-slate-900 border border-slate-750 rounded px-3 py-1.5 text-xs text-teal-400 font-bold w-48 text-center focus:outline-none">
+            </div>
+        </div>
+    </header>
+
+    <!-- محتوى لوحة التحكم الرئيسي -->
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- لوحة التحكم بالعمليات وتفعيل الأنماط -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-md font-bold mb-4 text-teal-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fas fa-database"></i> تحديث قاعدة البيانات
+                </h2>
+                
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-3xs text-slate-400">القيمة الجديدة المراد كتابتها:</label>
+                        <input type="text" id="newValueInput" value="رصيد رغد = 100$" class="bg-slate-950 border border-slate-850 rounded p-2 text-xs font-bold text-center text-teal-300 focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <button onclick="runStrongWrite()" class="w-full bg-teal-600 hover:bg-teal-500 active:scale-95 transition-all text-slate-950 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-teal-900/20 cursor-pointer">
+                        <i class="fas fa-lock"></i>
+                        كتابة بتناسق صارم (Strong)
+                    </button>
+
+                    <button onclick="runEventualWrite()" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20 cursor-pointer">
+                        <i class="fas fa-clock"></i>
+                        كتابة بتناسق تدريجي (Eventual)
+                    </button>
+
+                    <div class="border-t border-slate-800 my-2"></div>
+
+                    <button onclick="readFromNode('B')" class="w-full bg-slate-850 hover:bg-slate-800 active:scale-95 transition-all text-slate-300 font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-750 cursor-pointer">
+                        <i class="fas fa-magnifying-glass"></i>
+                        قراءة البيانات من الخادم (ب)
+                    </button>
+
+                    <button onclick="resetSimulation()" class="w-full bg-slate-950 hover:bg-slate-900 text-slate-400 text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-800 cursor-pointer mt-1">
+                        <i class="fas fa-rotate-right"></i>
+                        إعادة ضبط النظام
+                    </button>
+                </div>
+            </div>
+
+            <!-- شرح سريع للمفهوم -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow hidden lg:block">
+                <h3 class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-800 pb-2">فهم الفوارق النظرية:</h3>
+                <div class="text-[11px] text-slate-400 space-y-3 leading-relaxed">
+                    <p>
+                        💡 <strong class="text-teal-400">Strong Consistency:</strong> يضمن بقاء جميع الخوادم بنسخة متطابقة 100% طوال الوقت. لكن يضطر المستخدم للانتظار حتى انتهاء مزامنة الشبكة بالكامل.
+                    </p>
+                    <p>
+                        💡 <strong class="text-indigo-400">Eventual Consistency:</strong> يركز على السرعة الفائقة للكتابة. يتم تحديث الخادم الأول وتأكيد الطلب فوراً، بينما تنتقل البيانات للبقية في الخلفية. قد يقرأ العميل بيانات قديمة مؤقتاً لحين اكتمال المزامنة (Eventually Consistent).
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ساحة عرض المحاكاة الهيكلية للنظامين -->
+        <section class="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- النمط الأول: Strong Consistency (التناسق اللحظي الصارم) -->
+            <div id="strongCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-teal">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-teal-950 text-teal-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-teal-800/40">Immediate Agreement</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">نمط التناسق الصارم</h3>
+                        </div>
+                        <div id="strongStatusBadge" class="text-2xs text-teal-400 bg-teal-950/50 border border-teal-800/30 px-2 py-1 rounded">
+                            خامل وجاهز
+                        </div>
+                    </div>
+
+                    <!-- تمثيل خوادم التناسق الصارم -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-around relative overflow-hidden">
+                        
+                        <!-- الخادم الرئيسي أ -->
+                        <div id="strongNodeA" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">الخادم الأساسي (Node A)</h4>
+                                    <p id="strongValA" class="text-[10px] text-teal-300 font-mono">القيمة: رصيد رغد = 10$</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-teal-400 font-bold">رئيسي</span>
+                        </div>
+
+                        <!-- الخادم المساعد ب -->
+                        <div id="strongNodeB" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">الخادم الثاني (Node B)</h4>
+                                    <p id="strongValB" class="text-[10px] text-teal-300 font-mono">القيمة: رصيد رغد = 10$</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-slate-500">منسوخ</span>
+                        </div>
+
+                        <!-- الخادم المساعد ج -->
+                        <div id="strongNodeC" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">الخادم الثالث (Node C)</h4>
+                                    <p id="strongValC" class="text-[10px] text-teal-300 font-mono">القيمة: رصيد رغد = 10$</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-slate-500">منسوخ</span>
+                        </div>
+
+                        <!-- حاجز قفل الكتابة لحين المزامنة الكاملة -->
+                        <div id="strongLockOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px] flex flex-col items-center justify-center text-center opacity-0 pointer-events-none transition-all duration-300 z-10">
+                            <div class="w-10 h-10 rounded-full border-4 border-slate-800 border-t-teal-500 animate-spin mb-3"></div>
+                            <h4 class="text-xs font-bold text-teal-200">جاري قفل الكتابة! (Sync Lock Active)</h4>
+                            <p class="text-[9px] text-slate-400 mt-1 max-w-[180px]">النظام يرفض إعطاء العميل نتيجة النجاح قبل أن تؤكد جميع الخوادم تحديث البيانات لديها.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    تضمن الاتساق الكامل الفوري على حساب زمن الاستجابة (Latency)
+                </div>
+            </div>
+
+            <!-- النمط الثاني: Eventual Consistency (التناسق التدريجي) -->
+            <div id="eventualCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-indigo">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-indigo-950 text-indigo-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-indigo-800/40">Eventually Consistent</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">نمط التناسق التدريجي</h3>
+                        </div>
+                        <div id="eventualStatusBadge" class="text-2xs text-indigo-400 bg-indigo-950/50 border border-indigo-800/30 px-2 py-1 rounded">
+                            خامل وجاهز
+                        </div>
+                    </div>
+
+                    <!-- تمثيل خوادم التناسق التدريجي -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-around relative">
+                        
+                        <!-- الخادم الرئيسي أ -->
+                        <div id="eventualNodeA" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">الخادم الأساسي (Node A)</h4>
+                                    <p id="eventualValA" class="text-[10px] text-indigo-300 font-mono">القيمة: رصيد رغد = 10$</p>
+                                </div>
+                            </div>
+                            <span class="text-3xs text-indigo-400 font-bold">يحدث فوراً</span>
+                        </div>
+
+                        <!-- الخادم المساعد ب -->
+                        <div id="eventualNodeB" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">الخادم الثاني (Node B)</h4>
+                                    <p id="eventualValB" class="text-[10px] text-indigo-300 font-mono">القيمة: رصيد رغد = 10$</p>
+                                </div>
+                            </div>
+                            <span id="syncIndicatorB" class="text-3xs text-slate-500">متناسق</span>
+                        </div>
+
+                        <!-- الخادم المساعد ج -->
+                        <div id="eventualNodeC" class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between transition-all duration-300">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400 text-xs">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs">الخادم الثالث (Node C)</h4>
+                                    <p id="eventualValC" class="text-[10px] text-indigo-300 font-mono">القيمة: رصيد رغد = 10$</p>
+                                </div>
+                            </div>
+                            <span id="syncIndicatorC" class="text-3xs text-slate-500">متناسق</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    تضمن استجابة فائقة السرعة للكتابة على حساب دقة القراءة المؤقتة
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- شاشة إخراج تظهر تفاصيل العمليات (Terminal Console Log) -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                    <i class="fas fa-terminal"></i> سجل حركة ومزامنة قواعد البيانات (Database Consistency Tracer)
+                </span>
+                <button onclick="clearConsole()" class="text-3xs text-slate-400 hover:text-slate-100 transition-all bg-slate-950 px-2 py-1 rounded border border-slate-800 cursor-pointer">
+                    مسح السجل
+                </button>
+            </div>
+            <!-- صندوق السجلات -->
+            <div id="terminal" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-28 overflow-y-auto text-3xs font-mono text-emerald-400 space-y-1">
+                <div>[SYSTEM] جاهز للاختبار. جربي إدخال قيمة جديدة والضغط على أحد نمطي الكتابة لتراقبي حركة مزامنة الخوادم!</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- الجزء البرمجي للتحكم بالمحاكاة للأستاذ -->
+    <script>
+        let strongValue = "رصيد رغد = 10$";
+        let eventualValueA = "رصيد رغد = 10$";
+        let eventualValueB = "رصيد رغد = 10$";
+        let eventualValueC = "رصيد رغد = 10$";
+
+        let isEventualSyncing = false;
+
+        function logMessage(system, type, text) {
+            const terminal = document.getElementById('terminal');
+            if (!terminal) return;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            let colorClass = "text-emerald-400";
+            if (type === 'strong') colorClass = "text-teal-400 font-semibold";
+            if (type === 'eventual') colorClass = "text-indigo-400 font-semibold";
+            if (type === 'warning') colorClass = "text-amber-500 font-bold";
+            if (type === 'success') colorClass = "text-emerald-400 font-bold";
+
+            const logElement = document.createElement('div');
+            logElement.className = `${colorClass} py-0.5`;
+            logElement.innerHTML = `[${time}] [${system}] ${text}`;
+            
+            terminal.appendChild(logElement);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearConsole() {
+            const terminal = document.getElementById('terminal');
+            if (terminal) {
+                terminal.innerHTML = `<div>[SYSTEM] تم تصفير سجل المزامنة والمراقبة...</div>`;
+            }
+        }
+
+        // محاكاة الكتابة بالتناسق الصارم (Strong Consistency)
+        function runStrongWrite() {
+            const newValue = document.getElementById('newValueInput').value.trim() || "رصيد رغد = 100$";
+            
+            logMessage('CLIENT', 'strong', `طلب كتابة القيمة الجديدة: "${newValue}" بالتناسق الصارم (Strong Consistency).`);
+
+            const lock = document.getElementById('strongLockOverlay');
+            const badge = document.getElementById('strongStatusBadge');
+
+            if (lock) {
+                lock.classList.remove('opacity-0', 'pointer-events-none');
+                lock.classList.add('opacity-100');
+            }
+            if (badge) {
+                badge.innerText = "جاري مزامنة العقد...";
+                badge.className = "text-2xs text-amber-400 bg-amber-950/50 border border-amber-800/30 px-2 py-1 rounded animate-pulse";
+            }
+
+            // محاكاة قفل وتأخير المزامنة اللحظية لجميع الخوادم ليرى الأستاذ الفرق حركياً
+            logMessage('DATABASE_CLUSTER', 'strong', 'بدء مزامنة البيانات عبر القناة المؤمنة للشبكة... جاري التحديث على Node A...');
+            triggerNodeGlow('strongNodeA', 'bg-teal-950');
+
+            setTimeout(() => {
+                document.getElementById('strongValA').innerText = `القيمة: ${newValue}`;
+                logMessage('DATABASE_CLUSTER', 'strong', 'تم التحديث بنجاح على Node A. جاري قفل ومزامنة Node B...');
+                triggerNodeGlow('strongNodeB', 'bg-teal-950');
+
+                setTimeout(() => {
+                    document.getElementById('strongValB').innerText = `القيمة: ${newValue}`;
+                    logMessage('DATABASE_CLUSTER', 'strong', 'تم التحديث بنجاح على Node B. جاري قفل ومزامنة Node C...');
+                    triggerNodeGlow('strongNodeC', 'bg-teal-950');
+
+                    setTimeout(() => {
+                        document.getElementById('strongValC').innerText = `القيمة: ${newValue}`;
+                        strongValue = newValue; // تحديث القيمة بشكل نهائي
+                        
+                        logMessage('DATABASE_CLUSTER', 'success', 'اكتملت مزامنة جميع العقد بنجاح! تم فك قفل النظام.');
+                        logMessage('CLIENT', 'success', 'استقبل العميل رد النجاح: [HTTP 200 Write Success]. البيانات متطابقة تماماً في كل مكان.');
+
+                        // فك القفل التفاعلي
+                        if (lock) {
+                            lock.classList.remove('opacity-100');
+                            lock.classList.add('opacity-0', 'pointer-events-none');
+                        }
+                        if (badge) {
+                            badge.innerText = "متناسق ولحظي";
+                            badge.className = "text-2xs text-teal-400 bg-teal-950/50 border border-teal-800/30 px-2 py-1 rounded";
+                        }
+
+                    }, 1000);
+                }, 1000);
+            }, 1000);
+        }
+
+        // محاكاة الكتابة بالتناسق التدريجي (Eventual Consistency)
+        function runEventualWrite() {
+            const newValue = document.getElementById('newValueInput').value.trim() || "رصيد رغد = 100$";
+            
+            logMessage('CLIENT', 'eventual', `طلب كتابة القيمة الجديدة: "${newValue}" بالتناسق التدريجي (Eventual Consistency).`);
+
+            const badge = document.getElementById('eventualStatusBadge');
+            if (badge) {
+                badge.innerText = "كتابة سريعة نشطة";
+                badge.className = "text-2xs text-indigo-400 bg-indigo-950/50 border border-indigo-800/30 px-2 py-1 rounded animate-pulse";
+            }
+
+            // 1. التحديث الفوري للعقدة أ فقط وإرجاع النجاح السريع للعميل
+            logMessage('DATABASE_CLUSTER', 'eventual', 'جاري كتابة القيمة فوراُ وبسرعة البرق على العقدة Node A...');
+            triggerNodeGlow('eventualNodeA', 'bg-indigo-950');
+
+            setTimeout(() => {
+                eventualValueA = newValue;
+                document.getElementById('eventualValA').innerText = `القيمة: ${newValue}`;
+                
+                logMessage('CLIENT', 'success', 'العميل يستقبل استجابة فورية فائقة السرعة بالنجاح دون أي انتظار: [HTTP 200 OK - Write Saved].');
+                logMessage('DATABASE_CLUSTER', 'warning', 'تنبيه: تم تأكيد النجاح للعميل بالرغم من أن Node B و Node C لا يزالان يمتلكان قيمة قديمة!');
+
+                // تحديث شكل مؤشرات المزامنة لتدل على وجود خلل أو فجوة مزامنة مؤقتة
+                const indB = document.getElementById('syncIndicatorB');
+                const indC = document.getElementById('syncIndicatorC');
+                if (indB) {
+                    indB.innerText = "غير متزامن (Stale)";
+                    indB.className = "text-3xs text-rose-400 font-bold bg-rose-950/50 border border-rose-900 px-1.5 py-0.5 rounded";
+                }
+                if (indC) {
+                    indC.innerText = "غير متزامن (Stale)";
+                    indC.className = "text-3xs text-rose-400 font-bold bg-rose-950/50 border border-rose-900 px-1.5 py-0.5 rounded";
+                }
+
+                // 2. تفعيل المزامنة التدريجية في الخلفية (Background Asynchronous Replication)
+                isEventualSyncing = true;
+                logMessage('BACKGROUND_REPLICATOR', 'eventual', 'بدء عملية نشر المزامنة التدريجية في الخلفية بشكل غير متزامن...');
+
+                setTimeout(() => {
+                    // تحديث العقدة ب في الخلفية
+                    eventualValueB = newValue;
+                    document.getElementById('eventualValB').innerText = `القيمة: ${newValue}`;
+                    if (indB) {
+                        indB.innerText = "متناسق";
+                        indB.className = "text-3xs text-slate-500";
+                    }
+                    logMessage('BACKGROUND_REPLICATOR', 'eventual', 'تم إيصال ومزامنة التحديث الجديد إلى Node B في الخلفية.');
+                    triggerNodeGlow('eventualNodeB', 'bg-indigo-950');
+
+                    setTimeout(() => {
+                        // تحديث العقدة ج في الخلفية
+                        eventualValueC = newValue;
+                        document.getElementById('eventualValC').innerText = `القيمة: ${newValue}`;
+                        if (indC) {
+                            indC.innerText = "متناسق";
+                            indC.className = "text-3xs text-slate-500";
+                        }
+                        logMessage('BACKGROUND_REPLICATOR', 'success', 'اكتملت مزامنة جميع العقد الموزعة بنجاح! النظام الآن متسق (Eventually Consistent).');
+                        isEventualSyncing = false;
+
+                        if (badge) {
+                            badge.innerText = "متناسق (Eventual)";
+                            badge.className = "text-2xs text-indigo-400 bg-indigo-950/50 border border-indigo-800/30 px-2 py-1 rounded";
+                        }
+
+                    }, 2500); // تأخير متعمد في الخلفية لإظهار الفكرة بوضوح للأستاذ
+                }, 2500);
+
+            }, 400);
+        }
+
+        // قراءة البيانات يدوياً من الخادم ب لتوضيح فكرة Stale Read
+        function readFromNode(node) {
+            logMessage('CLIENT', 'info', `محاولة قراءة القيمة من العقدة Node ${node}...`);
+
+            // 1. حالة التناسق الصارم
+            logMessage('STRONG_REPORTER', 'strong', `القراءة من التناسق الصارم Node ${node} ترجع القيمة المؤكدة الحالية: "${strongValue}"`);
+
+            // 2. حالة التناسق التدريجي ومحاكاة Stale Read
+            if (isEventualSyncing && eventualValueB !== eventualValueA) {
+                logMessage('EVENTUAL_REPORTER', 'warning', `تنبيه: القراءة من التناسق التدريجي Node ${node} ترجع قيمة قديمة (Stale Read): "${eventualValueB}" بينما القيمة الفعلية هي "${eventualValueA}"!`);
+            } else {
+                logMessage('EVENTUAL_REPORTER', 'success', `القراءة من التناسق التدريجي Node ${node} ترجع القيمة المتطابقة الحالية: "${eventualValueB}"`);
+            }
+        }
+
+        // وميض حركي عند المزامنة
+        function triggerNodeGlow(id, bgClass) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const originalBg = el.classList.contains('bg-slate-900') ? 'bg-slate-900' : 'bg-slate-950';
+
+            el.classList.remove(originalBg);
+            el.classList.add(bgClass, 'scale-[1.02]', 'shadow-lg');
+            
+            setTimeout(() => {
+                el.classList.remove(bgClass, 'scale-[1.02]', 'shadow-lg');
+                el.classList.add(originalBg);
+            }, 600);
+        }
+
+        // إعادة تصفير المحاكاة بالكامل
+        function resetSimulation() {
+            strongValue = "رصيد رغد = 10$";
+            eventualValueA = "رصيد رغد = 10$";
+            eventualValueB = "رصيد رغد = 10$";
+            eventualValueC = "رصيد رغد = 10$";
+            isEventualSyncing = false;
+
+            document.getElementById('strongValA').innerText = "القيمة: رصيد رغد = 10$";
+            document.getElementById('strongValB').innerText = "القيمة: رصيد رغد = 10$";
+            document.getElementById('strongValC').innerText = "القيمة: رصيد رغد = 10$";
+
+            document.getElementById('eventualValA').innerText = "القيمة: رصيد رغد = 10$";
+            document.getElementById('eventualValB').innerText = "القيمة: رصيد رغد = 10$";
+            document.getElementById('eventualValC').innerText = "القيمة: رصيد رغد = 10$";
+
+            const indB = document.getElementById('syncIndicatorB');
+            const indC = document.getElementById('syncIndicatorC');
+            if (indB) {
+                indB.innerText = "متناسق";
+                indB.className = "text-3xs text-slate-500";
+            }
+            if (indC) {
+                indC.innerText = "متناسق";
+                indC.className = "text-3xs text-slate-500";
+            }
+
+            const strongBadge = document.getElementById('strongStatusBadge');
+            const eventualBadge = document.getElementById('eventualStatusBadge');
+            if (strongBadge) {
+                strongBadge.innerText = "خامل وجاهز";
+                strongBadge.className = "text-2xs text-teal-400 bg-teal-950/50 border border-teal-800/30 px-2 py-1 rounded";
+            }
+            if (eventualBadge) {
+                eventualBadge.innerText = "خامل وجاهز";
+                eventualBadge.className = "text-2xs text-indigo-400 bg-indigo-950/50 border border-indigo-800/30 px-2 py-1 rounded";
+            }
+
+            logMessage('SYSTEM', 'info', 'تم إعادة تصفير النظام الموزع ومزامنة الخوادم إلى القيمة الابتدائية (10$) بنجاح.');
+        }
+    </script>
+</body>
+</html>
