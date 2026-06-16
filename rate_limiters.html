@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة الأنظمة الموزعة: Token Bucket vs Sliding Window</title>
+    <!-- تضمين مكتبة Tailwind CSS للتصميم العصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تضمين مكتبة FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .glow-fuchsia {
+            box-shadow: 0 0 15px rgba(217, 70, 239, 0.4);
+        }
+        .glow-sky {
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+        }
+        .token-item {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-fuchsia-500 selection:text-slate-950">
+
+    <!-- رأس الصفحة والمعلومات الدراسية -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 via-pink-400 to-sky-400">
+                    لوحة محاكاة النظم الموزعة والمترابطة
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">تطبيق تفاعلي للمقارنة بين خوارزميات تحديد معدل الطلبات وحماية الخوادم (Rate Limiting Algorithms)</p>
+            </div>
+            
+            <!-- معلومات الطالبة ثابتة لمنع الأخطاء البرمجية -->
+            <div class="flex flex-wrap gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <div class="text-xs text-slate-400 px-2">اسم الطالبة:</div>
+                <input type="text" id="studentName" value="رغد الغزاوي" readonly class="bg-slate-900 border border-slate-750 rounded px-3 py-1.5 text-xs text-fuchsia-400 font-bold w-48 text-center focus:outline-none">
+            </div>
+        </div>
+    </header>
+
+    <!-- محتوى لوحة التحكم الرئيسي -->
+    <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- لوحة التحكم بالعمليات وإرسال الطلبات المتكررة -->
+        <section class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-md font-bold mb-4 text-fuchsia-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fas fa-shield-halved"></i> محاكاة حركة المرور
+                </h2>
+                
+                <div class="flex flex-col gap-3">
+                    <button onclick="sendRequest('token')" class="w-full bg-fuchsia-600 hover:bg-fuchsia-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-900/20 cursor-pointer">
+                        <i class="fas fa-cube"></i>
+                        طلب لـ Token Bucket
+                    </button>
+
+                    <button onclick="sendRequest('window')" class="w-full bg-sky-600 hover:bg-sky-500 active:scale-95 transition-all text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 cursor-pointer">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        طلب لـ Sliding Window
+                    </button>
+
+                    <div class="border-t border-slate-800 my-2"></div>
+
+                    <!-- أزرار هجوم لإغراق السيرفر بالطلبات لرؤية الحظر بوضوح -->
+                    <button onclick="triggerSpamAttack()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-95 transition-all text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 cursor-pointer">
+                        <i class="fas fa-bolt-lightning"></i>
+                        شن هجوم طلبات متكررة (Spam)
+                    </button>
+
+                    <button onclick="resetSimulation()" class="w-full bg-slate-950 hover:bg-slate-900 text-slate-400 text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-slate-800 cursor-pointer mt-1">
+                        <i class="fas fa-rotate-right"></i>
+                        إعادة ضبط كلي للنظام
+                    </button>
+                </div>
+            </div>
+
+            <!-- شرح سريع للمفهوم يقرأه الأستاذ على الواجهة -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow hidden lg:block">
+                <h3 class="text-xs font-bold text-slate-300 mb-2 border-b border-slate-800 pb-2">ما أهمية تحديد المعدل؟</h3>
+                <div class="text-[11px] text-slate-400 space-y-3 leading-relaxed">
+                    <p>
+                        💡 في الأنظمة الموزعة، يهدف الـ **Rate Limiting** إلى منع استهلاك موارد النظام بالكامل وإيقاف هجمات الـ DDoS.
+                    </p>
+                    <p>
+                        💡 <strong class="text-fuchsia-400">Token Bucket:</strong> تمنح العميل مرونة في تمرير دفعات مفاجئة من الطلبات (Burst Traffic) طالما السلة تحتوي على رموز متراكمة.
+                    </p>
+                    <p>
+                        💡 <strong class="text-sky-400">Sliding Window:</strong> أكثر دقة وصرامة في حساب الطلبات عبر الوقت، وتمنع تجاوز الحدود المسموحة تماماً عند الحواف الزمنية للثواني والدقائق.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ساحة عرض المحاكاة الهيكلية للنظامين -->
+        <section class="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- النمط الأول: Token Bucket (خوارزمية سلة الرموز المرنة) -->
+            <div id="tokenCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-fuchsia">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-fuchsia-950 text-fuchsia-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-fuchsia-800/40">Burst-friendly Limiter</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">خوارزمية Token Bucket</h3>
+                        </div>
+                        <div class="text-2xs text-slate-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded">
+                            الحد الأقصى: 5 رموز بالسلة
+                        </div>
+                    </div>
+
+                    <!-- تمثيل السلة والرموز -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-between relative">
+                        
+                        <!-- صندوق عرض السلة الفعلي -->
+                        <div class="flex-grow flex flex-col justify-center items-center border border-dashed border-slate-800 rounded-lg p-4 bg-slate-900/30">
+                            <span class="text-[10px] text-slate-500 font-bold mb-3">السلة الافتراضية (The Bucket)</span>
+                            
+                            <!-- السلة المرئية والرموز بداخلها -->
+                            <div id="bucketContainer" class="w-48 h-32 border-2 border-fuchsia-500/30 rounded-b-3xl border-t-0 p-3 flex flex-wrap-reverse items-end justify-center gap-1.5 bg-fuchsia-950/5 relative overflow-hidden">
+                                <!-- الرموز (Tokens) ستظهر وتختفي هنا ديناميكياً -->
+                            </div>
+                            
+                            <!-- مؤشر سرعة الملء تلقائياً -->
+                            <div class="text-[9px] text-slate-400 mt-3">
+                                <i class="fas fa-circle-notch animate-spin text-fuchsia-400 ml-1"></i> يتم إضافة رمز واحد كل 1.5 ثانية تلقائياً
+                            </div>
+                        </div>
+
+                        <!-- حالة حظر الطلبات (أحمر عند الفشل) -->
+                        <div class="mt-4 bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-full bg-fuchsia-950 border border-fuchsia-850 flex items-center justify-center text-fuchsia-400 text-xs">
+                                    <i class="fas fa-boxes-stacked"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs text-slate-200">مخزن الرموز الحالي</h4>
+                                    <p class="text-[9px] text-slate-500">الرموز المتوفرة: <span id="tokenCountText" class="text-fuchsia-400 font-bold">5</span> / 5</p>
+                                </div>
+                            </div>
+                            <span id="tokenStatusIndicator" class="text-3xs text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-900">متاح</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    تسمح بمرور دفعات سريعة من الطلبات طالما توفرت الرموز بالسلة
+                </div>
+            </div>
+
+            <!-- النمط الثاني: Sliding Window (خوارزمية النافذة المنزلقة الصارمة) -->
+            <div id="windowCard" class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between transition-all duration-500 glow-sky">
+                <div>
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <span class="bg-sky-950 text-sky-400 text-2xs px-2 py-0.5 rounded-full font-bold border border-sky-800/40">Smooth Rate Limiter</span>
+                            <h3 class="text-md font-bold text-slate-100 mt-1">خوارزمية Sliding Window</h3>
+                        </div>
+                        <div class="text-2xs text-slate-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded">
+                            الحد الأقصى: 4 طلبات / 10 ثوانٍ
+                        </div>
+                    </div>
+
+                    <!-- تمثيل النافذة المنزلقة الزجاجية -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[380px] flex flex-col justify-between">
+                        
+                        <!-- صندوق عرض النافذة الزمنية -->
+                        <div class="flex-grow flex flex-col justify-center items-center border border-dashed border-slate-800 rounded-lg p-4 bg-slate-900/30">
+                            <span class="text-[10px] text-slate-500 font-bold mb-3">النافذة الزمنية المتحركة (10 ثوانٍ)</span>
+                            
+                            <!-- تمثيل مرئي للطلبات المقبولة بداخل النافذة الزمنية -->
+                            <div id="windowTimeline" class="w-full h-20 bg-slate-900 rounded-xl border border-slate-800 p-2 flex items-center justify-start gap-2 relative overflow-hidden">
+                                <!-- الطلبات المقبولة ستتحرك وتتلاشى بعد 10 ثوانٍ تلقائياً -->
+                                <span id="windowEmptyState" class="text-3xs text-slate-600 text-center w-full">لا توجد طلبات مسجلة في النافذة حالياً...</span>
+                            </div>
+                            
+                            <div class="text-[9px] text-slate-400 mt-3">
+                                <i class="fas fa-history text-sky-400 ml-1"></i> الطلبات تسقط تلقائياً بعد مرور 10 ثوانٍ على إرسالها
+                            </div>
+                        </div>
+
+                        <!-- حالة حظر الطلبات (أحمر عند الفشل) -->
+                        <div class="mt-4 bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-full bg-sky-950 border border-sky-850 flex items-center justify-center text-sky-400 text-xs">
+                                    <i class="fas fa-gauge"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-3xs text-slate-200">عداد الطلبات النشط بالنافذة</h4>
+                                    <p class="text-[9px] text-slate-500">الطلبات المسجلة: <span id="windowCountText" class="text-sky-400 font-bold">0</span> / 4</p>
+                                </div>
+                            </div>
+                            <span id="windowStatusIndicator" class="text-3xs text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-900">مستقر</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-3xs text-slate-500 text-center">
+                    تحسب الطلبات بدقة لحظية متناهية لتفادي إغراق السيرفر بالطلبات
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- شاشة إخراج تظهر تفاصيل العمليات (Terminal Console Log) -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-fuchsia-400 flex items-center gap-1.5">
+                    <i class="fas fa-terminal"></i> شاشة تعقب تحديد معدل التدفق (Traffic Filter Logger)
+                </span>
+                <button onclick="clearConsole()" class="text-3xs text-slate-400 hover:text-slate-100 transition-all bg-slate-950 px-2 py-1 rounded border border-slate-800 cursor-pointer">
+                    مسح السجل
+                </button>
+            </div>
+            <!-- صندوق السجلات -->
+            <div id="terminal" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-28 overflow-y-auto text-3xs font-mono text-emerald-400 space-y-1">
+                <div>[SYSTEM] جدار حماية السيرفر جاهز للعمل. جربي إرسال طلبات متكررة وسريعة لمراقبة سلوك الحظر التلقائي!</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- الجزء البرمجي للتحكم بالمحاكاة -->
+    <script>
+        // متغيرات سلة الرموز (Token Bucket)
+        const maxTokens = 5;
+        let currentTokens = 5;
+        const fillRateInterval = 1500; // إضافة رمز كل 1.5 ثانية
+
+        // متغيرات النافذة المنزلقة (Sliding Window)
+        const windowMaxRequests = 4;
+        const windowDurationMs = 10000; // نافذة 10 ثوانٍ
+        let activeRequestsTimestamps = []; // مصفوفة لتخزين أوقات الطلبات
+
+        function logMessage(system, type, text) {
+            const terminal = document.getElementById('terminal');
+            if (!terminal) return;
+            const time = new Date().toLocaleTimeString('ar-EG');
+            
+            let colorClass = "text-emerald-400";
+            if (type === 'token') colorClass = "text-fuchsia-400 font-semibold";
+            if (type === 'window') colorClass = "text-sky-400 font-semibold";
+            if (type === 'error') colorClass = "text-rose-500 font-bold animate-pulse";
+            if (type === 'system') colorClass = "text-amber-400";
+
+            const logElement = document.createElement('div');
+            logElement.className = `${colorClass} py-0.5`;
+            logElement.innerHTML = `[${time}] [${system}] ${text}`;
+            
+            terminal.appendChild(logElement);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('terminal').innerHTML = `<div>[SYSTEM] تم تصفير سجل جدار الحماية ومراقبة التدفق...</div>`;
+        }
+
+        // تهيئة الرموز وتغذيتها تلقائياً عند تحميل الصفحة
+        window.onload = function () {
+            buildBucketUI();
+            setInterval(refillToken, fillRateInterval);
+        };
+
+        // دالة تعبئة رمز إضافي تلقائياً في السلة
+        function refillToken() {
+            if (currentTokens < maxTokens) {
+                currentTokens++;
+                logMessage('Token_Limiter', 'system', `تم إضافة رمز جديد للسلة تلقائياً. المتوفر الآن: ${currentTokens}`);
+                buildBucketUI();
+                updateTokenUI();
+            }
+        }
+
+        // بناء الرموز داخل السلة التفاعلية مرئياً
+        function buildBucketUI() {
+            const container = document.getElementById('bucketContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            for (let i = 0; i < currentTokens; i++) {
+                const token = document.createElement('div');
+                token.className = "token-item w-10 h-6 bg-gradient-to-r from-fuchsia-600 to-pink-500 border border-fuchsia-400/30 rounded-lg flex items-center justify-center shadow-lg shadow-fuchsia-950/40 animate-bounce";
+                token.innerHTML = `<i class="fas fa-key text-[9px] text-fuchsia-200"></i>`;
+                container.appendChild(token);
+            }
+        }
+
+        function updateTokenUI() {
+            const text = document.getElementById('tokenCountText');
+            const ind = document.getElementById('tokenStatusIndicator');
+            
+            if (text) text.innerText = currentTokens;
+            if (ind) {
+                if (currentTokens > 0) {
+                    ind.innerText = "متاح";
+                    ind.className = "text-3xs text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-900";
+                } else {
+                    ind.innerText = "محظور مؤقتاً";
+                    ind.className = "text-3xs text-rose-400 bg-rose-950 px-2 py-0.5 rounded border border-rose-900";
+                }
+            }
+        }
+
+        // معالجة إرسال طلب جديد لأحد النظامين
+        function sendRequest(type) {
+            const timeNow = Date.now();
+
+            if (type === 'token') {
+                logMessage('CLIENT', 'token', 'محاولة إرسال طلب جديد لـ [Token Bucket] من رغد الغزاوي...');
+                
+                if (currentTokens > 0) {
+                    currentTokens--;
+                    logMessage('Token_Limiter', 'token', `الطلب مقبول! تم استهلاك رمز واحد. الرموز المتبقية في السلة: ${currentTokens}`);
+                    buildBucketUI();
+                    updateTokenUI();
+                } else {
+                    logMessage('Token_Limiter', 'error', 'طلب مرفوض! [HTTP 429 Too Many Requests] - سلة الرموز فارغة حالياً!');
+                    triggerCardShake('tokenCard');
+                }
+            } else if (type === 'window') {
+                logMessage('CLIENT', 'window', 'محاولة إرسال طلب جديد لـ [Sliding Window] من رغد الغزاوي...');
+                
+                // تنظيف المصفوفة من الطلبات التي تجاوزت 10 ثوانٍ لتحديث النافذة
+                activeRequestsTimestamps = activeRequestsTimestamps.filter(timestamp => timeNow - timestamp < windowDurationMs);
+
+                if (activeRequestsTimestamps.length < windowMaxRequests) {
+                    activeRequestsTimestamps.push(timeNow);
+                    logMessage('Window_Limiter', 'window', `الطلب مقبول! الطلبات النشطة داخل النافذة الآن: ${activeRequestsTimestamps.length} / 4`);
+                    updateWindowUI();
+                } else {
+                    logMessage('Window_Limiter', 'error', 'طلب مرفوض! [HTTP 429 Too Many Requests] - تم تجاوز الحد الأقصى للطلبات بالنافذة الزمنية (4 طلبات / 10 ثوانٍ)!');
+                    triggerCardShake('windowCard');
+                }
+            }
+        }
+
+        // تحديث وعرض واجهة النافذة المنزلقة
+        function updateWindowUI() {
+            const timeline = document.getElementById('windowTimeline');
+            const countText = document.getElementById('windowCountText');
+            const ind = document.getElementById('windowStatusIndicator');
+            const emptyState = document.getElementById('windowEmptyState');
+
+            if (!timeline || !countText) return;
+
+            countText.innerText = activeRequestsTimestamps.length;
+            timeline.innerHTML = '';
+
+            if (activeRequestsTimestamps.length === 0) {
+                if (emptyState) emptyState.style.display = 'block';
+                timeline.innerHTML = '<span id="windowEmptyState" class="text-3xs text-slate-600 text-center w-full">لا توجد طلبات مسجلة في النافذة حالياً...</span>';
+            } else {
+                activeRequestsTimestamps.forEach((timestamp, idx) => {
+                    const block = document.createElement('div');
+                    block.className = "bg-sky-950/80 border border-sky-500/40 text-sky-300 rounded px-2 py-1.5 text-3xs font-mono font-bold flex flex-col items-center animate-fadeIn";
+                    block.innerHTML = `
+                        <i class="fas fa-check-circle mb-0.5 text-sky-400"></i>
+                        <span>طلب #${idx+1}</span>
+                    `;
+                    timeline.appendChild(block);
+                });
+            }
+
+            if (ind) {
+                if (activeRequestsTimestamps.length < windowMaxRequests) {
+                    ind.innerText = "مستقر";
+                    ind.className = "text-3xs text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-900";
+                } else {
+                    ind.innerText = "محظور مؤقتاً";
+                    ind.className = "text-3xs text-rose-400 bg-rose-950 px-2 py-0.5 rounded border border-rose-900";
+                }
+            }
+
+            // جدول زمني دقيق لإسقاط وحذف كل طلب مر عليه 10 ثوانٍ تلقائياً
+            setTimeout(() => {
+                const now = Date.now();
+                activeRequestsTimestamps = activeRequestsTimestamps.filter(ts => now - ts < windowDurationMs);
+                updateWindowUI();
+            }, windowDurationMs);
+        }
+
+        // دالة هجوم الطلبات المتكررة (Spam Attack) لرؤية الحظر بوضوح للأستاذ
+        function triggerSpamAttack() {
+            logMessage('SYSTEM', 'error', 'تحذير أمني: بدء محاكاة هجوم طلبات متكررة خارق (Spam Attack) على كِلا الخوارزميتين في نفس اللحظة!');
+            
+            let count = 0;
+            const spamInterval = setInterval(() => {
+                if (count >= 6) {
+                    clearInterval(spamInterval);
+                    logMessage('SYSTEM', 'system', 'انتهى الهجوم المتكرر. جدران الحماية نجحت بحظر الاختراقات وحققت الحماية المطلوبة للخوادم بنجاح.');
+                    return;
+                }
+                sendRequest('token');
+                sendRequest('window');
+                count++;
+            }, 150);
+        }
+
+        // اهتزاز البطاقة مرئياً عند حدوث حظر لتنبه الأستاذ
+        function triggerCardShake(cardId) {
+            const card = document.getElementById(cardId);
+            if (!card) return;
+            card.classList.add('animate-bounce');
+            setTimeout(() => {
+                card.classList.remove('animate-bounce');
+            }, 600);
+        }
+
+        // تصفير المحاكاة بالكامل للوضع الافتراضي
+        function resetSimulation() {
+            currentTokens = 5;
+            activeRequestsTimestamps = [];
+            
+            buildBucketUI();
+            updateTokenUI();
+            updateWindowUI();
+            
+            logMessage('SYSTEM', 'system', 'تم تصفير السلال وإعادة ضبط النوافذ الزمنية لجميع خوارزميات الحماية بنجاح.');
+        }
+    </script>
+</body>
+</html>
