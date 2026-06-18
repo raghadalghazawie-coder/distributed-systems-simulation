@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>معرض محاكاة الأنظمة الموزعة | System Architect Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        /* تنسيق شريط البحث */
+        .search-box { width: 100%; padding: 15px; margin-bottom: 20px; border: 2px solid #3498db; border-radius: 8px; font-size: 16px; }
+        .section-title { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .card a { text-decoration: none; color: #3498db; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>لوحة تحكم مهندس الأنظمة (System Architect Dashboard)</h1>
+        
+        <input type="text" id="searchInput" class="search-box" placeholder="ابحث عن أي مفهوم (مثال: Kafka, Monolith...)" onkeyup="filterCards()">
+
+        <div id="content">
+            <h2 class="section-title">قسم التوزيع (Load Balancing & Rate Limiting)</h2>
+            <div class="grid">
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/load_balancer_algorithms.html">خوارزميات موازن الحمل (Round Robin, Least Conn)</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/load_balancer_hash_sim.html">محاكاة التوزيع بالـ Hash</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/load_balancer_sticky_sim.html">موازن الحمل (Sticky Sessions)</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/least_time_sim.html">محاكاة Least Time</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/rate_limiters.html">تحديد معدل الطلبات (Token Bucket vs Sliding Window)</a></div>
+            </div>
+
+            <h2 class="section-title">قسم البيانات (Consistency & Scaling)</h2>
+            <div class="grid">
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/consistency_modes.html">الاتساق (Strong vs Eventual Consistency)</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/data_scaling.html">تجزئة وتكرار البيانات (Sharding vs Replication)</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/redis_vs_memcached.html">Redis vs Memcached</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/outbox_vs_cdc.html">Outbox Pattern vs CDC</a></div>
+            </div>
+
+            <h2 class="section-title">قسم المراسلة والبروتوكولات (Messaging & Protocols)</h2>
+            <div class="grid">
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/kafka_vs_rabbitmq.html">Kafka vs RabbitMQ</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/orchestration_vs_choreography.html">Orchestration vs Choreography</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/nats_vs_mqtt.html">NATS vs MQTT</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/dlx_vs_regular.html">DLX vs Regular Queue</a></div>
+            </div>
+
+            <h2 class="section-title">مفاهيم الأنظمة الموزعة</h2>
+            <div class="grid">
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/">Monolith vs Modular Monolith</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/failure_detection.html">كشف الأعطال (Failure Detection)</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/gossip_vs_discovery.html">Gossip Protocol</a></div>
+                <div class="card"><a href="https://raghadalghazawie-coder.github.io/distributed-systems-simulation/sync_vs_async.html">الاتصال المتزامن وغير المتزامن</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterCards() {
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            let cards = document.getElementsByClassName('card');
+            for (let i = 0; i < cards.length; i++) {
+                let text = cards[i].innerText.toLowerCase();
+                cards[i].style.display = text.includes(input) ? "" : "none";
+            }
+        }
+    </script>
+</body>
+</html>
