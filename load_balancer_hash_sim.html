@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>محاكي خوارزمية IP Hash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+    <h1 class="text-2xl font-bold text-center text-emerald-400 mb-6">محاكي خوارزمية IP Hash</h1>
+    
+    <div class="max-w-3xl mx-auto mb-8">
+        <label class="block text-sm mb-2 text-slate-400">أدخلي عنوان IP للمستخدم:</label>
+        <div class="flex gap-2">
+            <input type="text" id="ipInput" value="192.168.1.1" class="flex-1 bg-slate-800 p-2 rounded border border-slate-700">
+            <button onclick="simulateHash()" class="bg-emerald-600 px-6 py-2 rounded font-bold hover:bg-emerald-500">توجيه الطلب</button>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto grid grid-cols-4 gap-4 mb-8" id="server-grid">
+        </div>
+
+    <div id="log" class="max-w-3xl mx-auto bg-black p-4 rounded h-64 overflow-y-auto border border-slate-700 font-mono text-sm">
+        <div class="text-slate-500">انتظار الطلبات...</div>
+    </div>
+
+    <script>
+        const servers = [0, 0, 0, 0]; // 4 سيرفرات
+
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0; // تحويل لرقم صحيح
+            }
+            return Math.abs(hash);
+        }
+
+        function simulateHash() {
+            const ip = document.getElementById('ipInput').value;
+            const hashVal = simpleHash(ip);
+            const serverIndex = hashVal % 4;
+
+            servers[serverIndex]++;
+            
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<div>> IP: ${ip} | Hash: ${hashVal} | <b>توجيه إلى سيرفر ${serverIndex + 1}</b></div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            renderServers();
+        }
+
+        function renderServers() {
+            const grid = document.getElementById('server-grid');
+            grid.innerHTML = servers.map((load, i) => `
+                <div class="p-4 bg-slate-900 border border-emerald-900 rounded-lg text-center">
+                    <div class="text-xs text-slate-500">سيرفر ${i + 1}</div>
+                    <div class="text-2xl font-bold">${load}</div>
+                </div>
+            `).join('');
+        }
+        renderServers();
+    </script>
+</body>
+</html>
