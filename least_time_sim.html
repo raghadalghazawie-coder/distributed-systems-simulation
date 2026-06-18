@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>محاكي Least Response Time</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8">
+    <h1 class="text-2xl font-bold text-center text-emerald-400 mb-6">محاكي Least Response Time</h1>
+    
+    <div class="max-w-4xl mx-auto grid grid-cols-4 gap-4 mb-8" id="server-grid"></div>
+
+    <div class="max-w-4xl mx-auto text-center">
+        <button onclick="sendRequest()" class="bg-emerald-600 px-8 py-3 rounded-xl font-bold hover:bg-emerald-500 transition shadow-lg shadow-emerald-900">إرسال طلب جديد</button>
+    </div>
+
+    <div id="log" class="max-w-4xl mx-auto mt-8 bg-black p-4 rounded h-48 overflow-y-auto border border-slate-700 font-mono text-xs text-emerald-400"></div>
+
+    <script>
+        // كل سيرفر له زمن استجابة أساسي مختلف
+        const servers = [
+            {id: 'A', load: 0, baseTime: 20},
+            {id: 'B', load: 0, baseTime: 50},
+            {id: 'C', load: 0, baseTime: 30},
+            {id: 'D', load: 0, baseTime: 80}
+        ];
+
+        function sendRequest() {
+            // المعادلة: (زمن الاستجابة الأساسي) × (عدد الطلبات + 1)
+            // نختار السيرفر الذي يعطي أقل نتيجة لهذه المعادلة
+            let bestIndex = 0;
+            let minTime = Infinity;
+
+            servers.forEach((s, i) => {
+                let estimatedTime = s.baseTime * (s.load + 1);
+                if (estimatedTime < minTime) {
+                    minTime = estimatedTime;
+                    bestIndex = i;
+                }
+            });
+
+            servers[bestIndex].load++;
+            render();
+            log(`تم التوجيه لسيرفر ${servers[bestIndex].id} | وقت الاستجابة التقديري: ${minTime}ms`);
+        }
+
+        function render() {
+            const grid = document.getElementById('server-grid');
+            grid.innerHTML = servers.map(s => `
+                <div class="p-4 bg-slate-900 border border-emerald-900 rounded-xl text-center">
+                    <div class="text-emerald-500 font-bold">سيرفر ${s.id}</div>
+                    <div class="text-[10px] text-slate-400">أساس: ${s.baseTime}ms</div>
+                    <div class="text-2xl font-bold mt-2">${s.load}</div>
+                </div>
+            `).join('');
+        }
+
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<div>> ${msg}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        render();
+    </script>
+</body>
+</html>
